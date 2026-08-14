@@ -11,7 +11,10 @@ services:
     build: .
     image: gtech-agent-atolyesi:1.0
     ports:
-      - "${WEB_PORT:-8000}:8000"
+      # 127.0.0.1'e bağlanır, 0.0.0.0'a DEĞİL. Arayüz artık API anahtarı
+      # kabul ettiği için (§6/T8) servisin yerel ağdaki başka makinelerden
+      # erişilebilir olmaması gerekir.
+      - "127.0.0.1:${WEB_PORT:-8000}:8000"
     environment:
       LLM_PROVIDER: ${LLM_PROVIDER:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}

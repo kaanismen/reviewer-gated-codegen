@@ -132,17 +132,6 @@ def test_diske_yazilip_geri_okunur(tmp_path):
     assert loaded.toplam_maliyet_usd == transcript.toplam_maliyet_usd
 
 
-def test_planlayici_icerigi_sema_disi_veriyi_reddeder():
-    with pytest.raises(ValidationError):
-        make_plan(adimlar=["tek adım"])  # §7.2: 2–6 adım
-
-    with pytest.raises(ValidationError):
-        make_plan(kabul_kriterleri=[])  # §7.2: en az 1 kriter
-
-    with pytest.raises(ValidationError):
-        make_plan(oyun="satranç")  # kapsam dışı oyun
-
-
 def test_bos_dizeli_liste_ogesi_reddedilir():
     with pytest.raises(ValidationError):
         make_plan(kabul_kriterleri=["   "])

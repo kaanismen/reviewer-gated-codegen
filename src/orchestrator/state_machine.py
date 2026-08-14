@@ -15,7 +15,12 @@ from enum import Enum
 from typing import Callable
 
 from src.orchestrator.limits import LIMITS, Limits
-from src.transcript.models import Decision, PlannerContent, ReviewerContent
+from src.transcript.models import (
+    Decision,
+    FeasibilityVerdict,
+    PlannerContent,
+    ReviewerContent,
+)
 
 
 # Türkçe küçük harf kuralı: noktalı I küçükken noktasız, noktasız I ise 'ı'
@@ -29,11 +34,14 @@ class State(str, Enum):
     REVIEWING = "DENETLENIYOR"
     REJECTED = "REDDEDILDI"
     ACCEPTED = "KABUL_EDILDI"
+    OUT_OF_SCOPE = "KAPSAM_DISI"
     LIMIT_EXCEEDED = "LIMIT_ASILDI"
     ERROR = "HATA"
 
 
-TERMINAL_STATES = frozenset({State.ACCEPTED, State.LIMIT_EXCEEDED, State.ERROR})
+TERMINAL_STATES = frozenset(
+    {State.ACCEPTED, State.OUT_OF_SCOPE, State.LIMIT_EXCEEDED, State.ERROR}
+)
 
 
 class Event(str, Enum):
@@ -82,6 +90,8 @@ class RunContext:
     cost_usd: Decimal = Decimal("0")
     last_limit_hit: str = ""
     last_error: str = ""
+    refusal_reason: str = ""
+    refused_game: str = ""
 
     # -- ilerleme tespiti ---------------------------------------------------
 
@@ -148,7 +158,18 @@ def _task_valid(ctx: RunContext, p: Payload) -> bool:
 
 
 def _plan_usable(ctx: RunContext, p: Payload) -> bool:
-    return p.plan is not None and len(p.plan.kabul_kriterleri) >= 1
+    return (
+        p.plan is not None
+        and p.plan.effective_verdict is FeasibilityVerdict.UYGUN
+        and len(p.plan.kabul_kriterleri) >= 1
+    )
+
+
+def _plan_refused(ctx: RunContext, p: Payload) -> bool:
+    return (
+        p.plan is not None
+        and p.plan.effective_verdict is FeasibilityVerdict.UYGUN_DEGIL
+    )
 
 
 def _schema_retries_left(ctx: RunContext, p: Payload) -> bool:
@@ -225,6 +246,13 @@ def _next_turn(ctx: RunContext, p: Payload) -> None:
     ctx.turn += 1
 
 
+def _record_refusal(ctx: RunContext, p: Payload) -> None:
+    if p.plan is None:
+        return
+    ctx.refusal_reason = p.plan.override_reason or p.plan.uygulanabilirlik.gerekce
+    ctx.refused_game = p.plan.oyun
+
+
 def _record_limit(ctx: RunContext, p: Payload) -> None:
     ctx.last_limit_hit = p.limit_name or p.detail
 
@@ -251,7 +279,13 @@ TRANSITIONS: tuple[Transition, ...] = (
 
     Transition("G2", State.PLANNING, Event.PLAN_PRODUCED, State.IMPLEMENTING,
                _plan_usable, None,
-               "plan geçerli, en az bir kabul kriteri var"),
+               "uygulanabilir bulundu, en az bir kabul kriteri var"),
+
+    # Gerekçeli ret bir hata değildir. Kendi son durumu vardır ki
+    # "sistem çöktü" ile "sistem değerlendirdi ve yapmadı" karışmasın.
+    Transition("G2k", State.PLANNING, Event.PLAN_PRODUCED, State.OUT_OF_SCOPE,
+               _plan_refused, _record_refusal,
+               "uygulanabilirlik ölçütünü geçemedi — gerekçeli ret"),
 
     # G3'ün "2. kez" ifadesi bir yeniden deneme hakkı olduğunu ima eder ama
     # tabloda ilk denemenin geçişi yazılı değildi; G3r bu boşluğu kapatır.
@@ -397,4 +431,7 @@ class StateMachine:
             )
         if self.state is State.ERROR:
             report["hata"] = ctx.last_error
+        if self.state is State.OUT_OF_SCOPE:
+            report["oyun"] = ctx.refused_game
+            report["ret_gerekcesi"] = ctx.refusal_reason
         return report

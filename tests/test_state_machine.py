@@ -20,7 +20,13 @@ from src.orchestrator.state_machine import (
     event_for_review,
 )
 from src.transcript.models import Decision, Finding, Severity
-from tests.conftest import make_accepted_review, make_plan, make_review
+from tests.conftest import (
+    make_accepted_review,
+    make_feasibility,
+    make_plan,
+    make_refusal,
+    make_review,
+)
 
 GOREV = "tic tac toe oyunu yaz"
 
@@ -96,6 +102,29 @@ def test_g2_plan_uretildi():
     result = machine.fire(Event.PLAN_PRODUCED, Payload(plan=make_plan()))
     assert result.rule == "G2"
     assert machine.state is State.IMPLEMENTING
+
+
+def test_g2k_uygulanabilir_bulunmadi_kapsam_disi():
+    """Gerekçeli ret bir hata değildir; kendi son durumu vardır."""
+    machine = at_planning()
+    result = machine.fire(Event.PLAN_PRODUCED, Payload(plan=make_refusal()))
+    assert result.rule == "G2k"
+    assert machine.state is State.OUT_OF_SCOPE
+    assert machine.state is not State.ERROR
+
+    report = machine.final_report()
+    assert report["son_durum"] == "KAPSAM_DISI"
+    assert "en passant" in str(report["ret_gerekcesi"])
+    assert report["oyun"] == "satranç"
+
+
+def test_g2k_gecersiz_kilinan_uygun_karari_da_kapsam_disina_gider():
+    """Planlayıcı UYGUN dese bile kendi ölçümüyle çelişiyorsa geçmez."""
+    machine = at_planning()
+    plan = make_plan(uygulanabilirlik=make_feasibility(ozel_durum_sayisi=99))
+    result = machine.fire(Event.PLAN_PRODUCED, Payload(plan=plan))
+    assert result.rule == "G2k"
+    assert "özel durum" in machine.context.refusal_reason
 
 
 def test_g2_plan_yoksa_gecis_yok():

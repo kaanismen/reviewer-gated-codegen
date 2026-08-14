@@ -39,7 +39,7 @@ Sistemin ayırt edici özelliği agent'ların konuşması değil, **birbirini re
 
 | Konu | Kapsam |
 |---|---|
-| Üretilebilir oyunlar | tic-tac-toe, snake, pong, breakout |
+| Üretilebilir oyunlar | **İsim listesiyle değil ölçütle belirlenir** (bkz. §2.1.1). Bilinen-iyi örnekler: tic-tac-toe, snake, pong, breakout |
 | Çıktı biçimi | Tek dosyalık `game.html` (canvas + JS) + ayrı `logic.js` mantık modülü |
 | Test | `logic.js` üzerinde `node --test` ile çalışan `logic.test.js` |
 | Agent sayısı | 3 (planlayıcı, uygulayıcı, denetleyici) |
@@ -47,11 +47,25 @@ Sistemin ayırt edici özelliği agent'ların konuşması değil, **birbirini re
 | Sağlayıcılar | Anthropic (Claude), OpenAI, Ollama, ve test için sahte sağlayıcı |
 | Kalıcılık | Transkript ve üretilen dosyalar diske yazılır, oturum sonrası erişilebilir |
 
+### 2.1.1 Uygulanabilirlik ölçütü
+
+Sabit bir oyun listesi, "başa çıkabileceğimiz karmaşıklık" için **kötü bir vekil ölçüdür**: connect-4 listede olmadığı için reddedilirdi, oysa snake'ten kolaydır. Ölçütün kendisi yazılır, sonucu değil:
+
+| # | Ölçüt | Geçemezse |
+|---|---|---|
+| U1 | Oyun durumu tek bir veri yapısında tutulabiliyor mu | Kapsam dışı |
+| U2 | Özel durum (kural istisnası) sayısı ≤ 10 mu | Kapsam dışı |
+| U3 | Bitiş/kazanma koşulu **saf fonksiyonla** test edilebiliyor mu | Kapsam dışı |
+| U4 | Harici varlık (görsel, ses, veri dosyası) gerekiyor mu | Gerekiyorsa kapsam dışı (§2.2) |
+| U5 | Gerçek zamanlı animasyon gerekiyor mu | **Tek başına diskalifiye etmez** — pong ve breakout kapsam içidir |
+
+Planlayıcı bu değerlendirmeyi **yapısal veri olarak** döndürür (§7.2), serbest metin olarak değil; böylece denetlenebilir ve sınanabilir. Ölçütü geçemeyen görev `KAPSAM_DISI` son durumuna gider — bu bir hata değil, gerekçeli bir rettir.
+
 ### 2.2 Kapsam dışı — gerekçeleriyle
 
 | Konu | Neden dışarıda |
 |---|---|
-| **Satranç** | Rok, en passant, şah/mat tespiti ve geçerli hamle üretimi tek oturumda güvenilir üretim için fazla karmaşık. Sistemin bilinen sınırıdır ve 3. gün **hata senaryosu demosu** olarak bilinçli gösterilecektir. |
+| **Satranç** | Adı yasaklı olduğu için değil, **U2 ölçütünü geçemediği için**: rok, en passant, şah/mat, piyon terfisi, pat ve geçerli hamle üretimi özel durum tavanını fazlasıyla aşar. Sistem bunu çalışma anında değerlendirir ve gerekçeli olarak reddeder. 3. gün **hata senaryosu demosu** budur. |
 | Çok oyunculu / ağ üzerinden oyun | Ağ katmanı sandbox politikasıyla çelişir (sandbox'ta ağ kapalıdır) |
 | 3B grafik, ses varlıkları, harici görsel | Tek dosyalık teslim kısıtını bozar; üretim süresi ve token maliyeti öngörülemez hale gelir |
 | Kullanıcı hesabı, oturum yönetimi, çok kullanıcılı eşzamanlılık | 3 günlük süre kısıtı; tek kullanıcılı yerel çalıştırma varsayılmıştır |
@@ -205,6 +219,24 @@ Host'ta Python, Node veya bağımlılık kurulumu **yoktur**. Tek ön koşul Doc
 | `LLM_PROVIDER` | `anthropic` | `anthropic` \| `openai` \| `ollama` \| `replay` |
 | `WEB_PORT` | `8000` | Host'a eşlenen port |
 
+#### Rol bazlı anahtar girişi
+
+Son kullanıcı, her agent için **kendi API anahtarını arayüzden** girebilir; planlayıcı Anthropic, uygulayıcı OpenAI gibi karışık kurulumlar mümkündür. Bu, sisteme üçüncü taraf kimlik bilgisi emanet etmek demektir, dolayısıyla kasanın sözleşmesi dar tutulmuştur:
+
+| Kural | Uygulama | Kapattığı sızıntı yolu |
+|---|---|---|
+| **Diske yazılmaz** | Yalnızca süreç belleğinde (`KeyVault`); konteyner yeniden başlayınca kaybolur | Transkript, workspace, log dosyası, yedek |
+| **Geri okunamaz** | Arayüze yalnızca `{maske: "••••9f3a", uzunluk, saglayici, kaynak}` döner. `get()` yalnızca sağlayıcı istemcisini kuran kod tarafından çağrılır | API yanıtından geri okuma |
+| **Log'a giremez** | `SecretStr` + kasaya özel `__repr__`/`__str__` | İstisna izleri (traceback), hata ayıklama çıktısı |
+| **Metinden silinir** | `redact()` bilinen anahtarları **birebir dize** eşleşmesiyle siler; ortamdaki anahtarlar da bilinen sayılır | Sağlayıcı hata mesajının (401 vb.) transkripte yazılması |
+| **Hata mesajı yankılamaz** | `KeyRejected` yalnızca uzunluk/biçim söyler, değeri asla | Doğrulama hatasının HTTP yanıtına düşmesi |
+| **Alt sürece geçmez** | Ortam temizliği (§3.3 sandbox tablosu); kasa `os.environ`'a hiç yazmaz | Üretilen kodun anahtarı okuması |
+| **Ağa açılmaz** | Konteyner portu `127.0.0.1`'e bağlanır, `0.0.0.0`'a değil | Yerel ağdaki başka bir makinenin anahtarı kullanması |
+
+`redact()`'in **desen değil birebir eşleşme** kullanması önemlidir: anahtarın tam değeri bilindiği için, sır taramasının desen tabanlı olmasından kaynaklanan belirsizlik (bilinen sınır S3) kullanıcı anahtarları için geçerli değildir.
+
+Arayüzden girilen anahtar, ortam değişkenini geçersiz kılar — daha yeni ve daha açık bir niyettir.
+
 **Anahtarsız çalışabilirlik zorunludur.** `.env` boşsa sistem `replay` sağlayıcısıyla başlar ve kayıtlı senaryoları oynatır. Eğitmen hiçbir API anahtarı girmeden `docker compose up` yapıp sistemi uçtan uca çalışırken görebilir. Bu, "hatasız kurulabilen ürün" kriterinin en güçlü kanıtıdır.
 
 #### İmaj kısıtları
@@ -233,6 +265,7 @@ Host'ta Python, Node veya bağımlılık kurulumu **yoktur**. Tek ön koşul Doc
 | `DENETLENIYOR` | Denetleyici test çalıştırıp inceliyor | Evet |
 | `REDDEDILDI` | Denetleyici reddetti, revizyon kararı veriliyor | Evet (geçici durum) |
 | `KABUL_EDILDI` | Teslim hazır | **Son durum** |
+| `KAPSAM_DISI` | Görev uygulanabilirlik ölçütünü geçemedi, gerekçeli ret verildi | **Son durum** |
 | `LIMIT_ASILDI` | Tur/token/süre/maliyet tavanı doldu veya ilerleme durdu | **Son durum** |
 | `HATA` | Kurtarılamayan teknik hata | **Son durum** |
 
@@ -241,7 +274,8 @@ Host'ta Python, Node veya bağımlılık kurulumu **yoktur**. Tek ön koşul Doc
 | # | Kaynak | Olay | Hedef | Koruma koşulu |
 |---|---|---|---|---|
 | G1 | *(başlangıç)* | görev alındı | `PLANLANIYOR` | Görev metni boş değil ve ≤ 2000 karakter |
-| G2 | `PLANLANIYOR` | plan üretildi | `UYGULANIYOR` | Plan JSON şeması geçerli, ≥ 1 kabul kriteri var |
+| G2 | `PLANLANIYOR` | plan üretildi | `UYGULANIYOR` | Uygulanabilirlik = `UYGUN` **ve** ≥ 1 kabul kriteri var |
+| G2k | `PLANLANIYOR` | plan üretildi | `KAPSAM_DISI` | Uygulanabilirlik = `UYGUN_DEGIL` — gerekçeli ret (§2.1.1) |
 | G3r | `PLANLANIYOR` | şema hatası (1. kez) | `PLANLANIYOR` | Yeniden deneme hakkı var — planlayıcı tekrar çağrılır |
 | G3 | `PLANLANIYOR` | şema hatası (2. kez) | `HATA` | Yeniden deneme hakkı tükendi |
 | G4 | `UYGULANIYOR` | dosyalar yazıldı | `DENETLENIYOR` | ≥ 1 dosya yazıldı, tüm yollar workspace içinde |
@@ -310,7 +344,8 @@ Bu sistemin merkezinde **AI'ın ürettiği kodun gerçekten çalıştırılması
 | T4 | **Sahte KABUL** | Denetleyicinin kararı **yapısal JSON** olarak ayrıştırılır. Serbest metin içinde geçen "KABUL" kelimesi karar sayılmaz — üretilen kodun içindeki bir yorum satırı sistemi kandıramaz | `test_reviewer_parsing.py` |
 | T5 | Sır sızıntısı | Üretilen kod ve transkript, yaygın anahtar desenlerine karşı taranır; bulgu varsa KABUL geçersizdir ve transkriptte maskelenir | `test_security.py::test_sir_taramasi` |
 | T6 | Maliyet/DoS | §5'teki tüm limitler; ayrıca ilerleme-yok tespiti | `test_limits.py` |
-| T7 | API anahtarı sızıntısı | Anahtarlar yalnızca ortam değişkeninden okunur, asla transkripte veya loga yazılmaz, `.env` `.gitignore`'dadır | Kod incelemesi + `test_security.py::test_anahtar_loglanmaz` |
+| T7 | API anahtarı sızıntısı | Anahtarlar ortam değişkeninden veya arayüzden alınır; **asla diske, transkripte veya loga yazılmaz**, `.env` `.gitignore`'dadır, alt sürece geçirilmez | `test_key_vault.py` |
+| T8 | **Kullanıcının emanet ettiği anahtarın dışarı çıkması** | Bkz. §3.3 "Rol bazlı anahtar girişi". Kasa yalnızca maskeli parmak izi döndürür; `redact()` bilinen anahtarları **birebir dize eşleşmesiyle** metinden siler; `SecretStr` ve özel `__repr__` istisna izlerinde sızıntıyı kapatır; hata mesajları anahtarı yankılamaz | `test_key_vault.py` (25 test) |
 
 ### Bilinen sınırlar — dürüstçe belgelenmiştir
 
@@ -322,6 +357,7 @@ Aşağıdakiler kapatılmamış açıklardır. Gizlenmeleri yerine, sonuçlarıy
 | S2 | Statik içe aktarma denetimi desen tabanlıdır | Yeterince gizlenmiş kod (dize birleştirmeyle modül adı üretme gibi) teoride denetimi atlatabilir | Dinamik `require`/`import()` biçimleri de topluca reddedilerek gizleme yüzeyi daraltıldı. Atlatılsa dahi kod hâlâ ayrıcalıksız kullanıcı, rlimit ve konteyner sınırı içindedir — tek katman değil, **son katman** delinmiş olur |
 | S3 | Sır taraması desen tabanlıdır | Bilinmeyen formatta bir anahtar yakalanmayabilir | 3 günlük kapsamda entropi tabanlı tarama kapsam dışı bırakıldı. API anahtarları alt sürece hiçbir zaman geçirilmez (ortam temizliği), dolayısıyla üretilen kodun sızdıracak bir anahtarı yoktur |
 | S4 | Konteyner kaçışı bu projenin tehdit modeli dışındadır | Docker'ın kendi izolasyonundaki bir zafiyet varsayılmamıştır | Konteyner sınırı en dış katmandır; onun ötesi platform sorumluluğudur |
+| S5 | **Arayüzün önünde kimlik doğrulama yoktur** | Anahtar girildikten sonra, `localhost:8000`'e erişebilen herkes o anahtarla istek başlatabilir | Tek kullanıcılı yerel çalıştırma varsayımı (V3) gereğidir; oturum yönetimi 3 günlük kapsamda değildir (§2.2). Azaltıcı: port `127.0.0.1`'e bağlıdır, yerel ağa açık değildir; anahtar bellekte durur ve konteyner durdurulunca kaybolur; arayüzde açık **"anahtarları temizle"** eylemi vardır |
 
 **Katman sayısı bilinçlidir.** Yukarıdaki sınırların hiçbiri tek başına savunmayı çökertmez: bir saldırının hedefe ulaşması için statik denetimi, ayrıcalık düşürmeyi, kaynak limitlerini, yol kısıtını ve konteyner sınırını **arka arkaya** aşması gerekir. Tasarım hedefi kusursuz izolasyon değil, **her katmanın bağımsız ve test edilebilir olmasıdır.**
 
@@ -353,10 +389,15 @@ Aşağıdakiler kapatılmamış açıklardır. Gizlenmeleri yerine, sonuçlarıy
 
 | Alan | Tip | Zorunlu | İş kuralı |
 |---|---|---|---|
-| `oyun` | enum: `tic-tac-toe` \| `snake` \| `pong` \| `breakout` | ✔ | Kapsam dışı oyun istenirse plan üretilmez, gerekçeli ret döner |
-| `adimlar` | string[] | ✔ | 2–6 adım; boş liste geçersiz |
-| `kabul_kriterleri` | string[] | ✔ | **En az 1 zorunlu.** Her biri test edilebilir bir ifade olmalı |
-| `dosyalar` | string[] | ✔ | Üretilecek dosya adları; workspace'e göreli |
+| `oyun` | string | ✔ | Serbest; kanonik biçime indirgenir (küçük harf, boşluk → tire). Sabit liste yoktur |
+| `uygulanabilirlik` | object | ✔ | `{karar, gerekce, ozel_durum_sayisi, gerekli_ozellikler[], gercek_zamanli, harici_varlik_gerekli}`. `karar` ∈ `UYGUN` \| `UYGUN_DEGIL`; `gerekce` 10–500 karakter |
+| `adimlar` | string[] | koşullu | `UYGUN` ise 2–6 adım zorunlu; `UYGUN_DEGIL` ise **boş olmalı** |
+| `kabul_kriterleri` | string[] | koşullu | `UYGUN` ise en az 1 zorunlu, her biri test edilebilir ifade; `UYGUN_DEGIL` ise boş |
+| `dosyalar` | string[] | koşullu | `UYGUN` ise en az 1; `UYGUN_DEGIL` ise boş |
+
+**İş kuralı — değerlendirme tutarlılığı:** `karar = UYGUN` iken `ozel_durum_sayisi > 10` **veya** `harici_varlik_gerekli = true` ise sistem kararı geçersiz sayar ve `UYGUN_DEGIL` olarak işler. §7.4'teki denetleyici kuralının eşleniğidir: **planlayıcı da kendi ölçümüyle çelişemez.** İki geçersiz kılma nedeni de mevcut kapsam kurallarından türetilmiştir (U2 ve §2.2), yeni kural değildir.
+
+**İçerik ya plandır ya rettir.** İkisinin ortası şema düzeyinde reddedilir: `UYGUN_DEGIL` kararıyla adım/kriter/dosya taşıyan bir çıktı geçersizdir.
 
 ### 7.3 `icerik` — uygulayıcı
 
@@ -466,6 +507,7 @@ Bir teslim, aşağıdakilerin tamamı sağlandığında bitmiş sayılır:
 |---|---|---|
 | 1.0 | 14.08.2026 | İlk sürüm — kapsam, mimari, durum makinesi, şemalar, güvenlik politikası |
 | 1.1 | 14.08.2026 | **Eğitmen makinesinde dockerize çalışma şartı eklendi (K5).** §3.3 dağıtım mimarisi, iki kademeli sandbox modu, anahtarsız `replay` başlangıcı ve imaj kısıtları eklendi. §6'ya Docker soketi bağlama takası (S1) ve yedek mod izolasyon zaafı (S2) bilinen sınır olarak yazıldı. §2.3 V1 ve §12 tamamlanma ölçütü güncellendi |
+| 1.5 | 14.08.2026 | **Kapsam ölçüte bağlandı + rol bazlı anahtar girişi.** §2.1.1 uygulanabilirlik ölçütü (U1–U5) eklendi; `oyun` alanı sabit enum olmaktan çıkıp serbest ada dönüştü ve §7.2'ye `uygulanabilirlik` nesnesi ile "planlayıcı kendi ölçümüyle çelişemez" iş kuralı geldi. Yeni son durum `KAPSAM_DISI` ve geçiş G2k — gerekçeli ret artık teknik hatadan ayrı. Satırancın kapsam dışılığı isim yasağı olmaktan çıkıp U2 ölçütünün sonucu oldu. §3.3'e "Rol bazlı anahtar girişi", §6'ya tehdit T8 ve bilinen sınır S5 eklendi; konteyner portu `127.0.0.1`'e bağlandı. 141 test yeşil |
 | 1.4 | 14.08.2026 | **Faz 1 — uygulamadan geri beslenen spesifikasyon boşlukları.** §4.2'ye üç geçiş eklendi: G3r ve G9r (tabloda "2. kez" denen yeniden deneme haklarının 1. kez dalları yazılı değildi), G6s (KK-06'daki "sır bulunursa KABUL geçersiz" dalı tabloda yoktu). §4.2'ye `event_for_review()` kuralı, §7.1'e köken alanlarının rol bazlı zorunluluğu, §7.3'e `arac_cagrilari` iç şeması eklendi. 95 test yeşil |
 | 1.3 | 14.08.2026 | **Ölçüm düzeltmesi (Faz 0).** Docker Desktop/WSL2 altında yapılan ölçüm, `RLIMIT_AS`'in Node için yanlış kaldıraç olduğunu gösterdi — 512 MB'de meşru kod bile çöküyor. Bellek tavanı `RLIMIT_DATA`ya çevrildi; §3.3'e gerekçe ve ölçüm referansı, §5'e not eklendi, §6/T2 güncellendi. Ölçüm betiği: `tests/manual/rlimit_olcumu.py`. Diğer üç rlimit, ayrıcalık düşürme ve duvar saati doğrulandı |
 | 1.2 | 14.08.2026 | **Docker içinde Docker kaldırıldı.** Tek konteyner, tek imaj (Python + Node); Docker soketi bağlanmıyor, uygulama konteyner başlatmıyor. Sandbox artık süreç düzeyinde katmanlı izolasyon: ayrıcalık düşürme, rlimit'ler, zaman aşımı, yol kısıtı, ortam temizliği ve yeni **statik içe aktarma izin listesi** (T2b). §6 bilinen sınırlar tablosu baştan yazıldı — eski S1 (soket ayrıcalığı) ve S2 (yedek mod) ortadan kalktı; yerine ağ ad alanı izolasyonunun yokluğu (S1) ve desen tabanlı denetimin sınırı (S2) geldi. §5'e rlimit değerleri eklendi |

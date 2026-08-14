@@ -14,8 +14,9 @@ from src.orchestrator.limits import Limits
 from src.transcript.models import (
     AgentMessage,
     Decision,
+    Feasibility,
+    FeasibilityVerdict,
     Finding,
-    Game,
     ImplementerContent,
     PlannerContent,
     ReviewerContent,
@@ -27,12 +28,38 @@ from src.transcript.models import (
 )
 
 
+def make_feasibility(**overrides) -> Feasibility:
+    data = {
+        "karar": FeasibilityVerdict.UYGUN,
+        "gerekce": "ızgara durumu tek dizide tutulur, kazanma kontrolü saf fonksiyondur",
+        "ozel_durum_sayisi": 3,
+        "gerekli_ozellikler": ["ızgara durumu", "kazanma kontrolü", "beraberlik"],
+        "gercek_zamanli": False,
+        "harici_varlik_gerekli": False,
+    }
+    return Feasibility(**{**data, **overrides})
+
+
 def make_plan(**overrides) -> PlannerContent:
     data = {
-        "oyun": Game.TIC_TAC_TOE,
+        "oyun": "tic-tac-toe",
+        "uygulanabilirlik": make_feasibility(),
         "adimlar": ["mantığı yaz", "testleri yaz", "arayüzü yaz"],
         "kabul_kriterleri": ["üç aynı işaret kazanır"],
         "dosyalar": ["logic.js", "logic.test.js", "game.html"],
+    }
+    return PlannerContent(**{**data, **overrides})
+
+
+def make_refusal(oyun: str = "satranç", **overrides) -> PlannerContent:
+    """Gerekçeli ret — plan alanları boş."""
+    data = {
+        "oyun": oyun,
+        "uygulanabilirlik": make_feasibility(
+            karar=FeasibilityVerdict.UYGUN_DEGIL,
+            gerekce="rok, en passant ve şah/mat tespiti özel durum sayısını aşıyor",
+            ozel_durum_sayisi=24,
+        ),
     }
     return PlannerContent(**{**data, **overrides})
 

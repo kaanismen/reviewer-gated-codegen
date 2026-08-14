@@ -342,6 +342,42 @@ Türkçe I/İ çeviri tablosu eklendi (`İ→i`, `I→ı`; kalan harfleri standa
 
 ---
 
+### Kayıt 1.10 — Kapsamın ölçüte bağlanması ve rol bazlı anahtar girişi
+
+**Prompt:**
+
+> peki sana bir soru mesela oyun istiyoruz ya. Verdiğimiz oyunu kendisi değerlendirip bu yapılabilir yapılamaz dese mesela connect-4 oyunu dediğimizde kapsam alanı dışı olmasın bence. Buna bir RAG yapısı bağlanabilir mi sence?
+
+> onaylıyorum haydi devam edelim. Bu arada son kullanıcının her bir agent için kendi api key'ini yerleştireceği bir alan istiyorum. (Bunun ama data leak'i önleyecek şekilde yapmamız lazım bunu da değerlendir)
+
+**AI çıktısı — özet:**
+
+İki ayrı iş yapıldı.
+
+**(1) Kapsam, isim listesinden ölçüte çevrildi.** `oyun` alanı dört elemanlı bir enum'du; connect-4 bu yüzden reddedilirdi — oysa snake'ten kolaydır. §2.1.1'e beş ölçüt (U1–U5) yazıldı, `oyun` serbest ada dönüştü, planlayıcı çıktısına yapısal `uygulanabilirlik` nesnesi eklendi. Yeni son durum `KAPSAM_DISI` ve geçiş G2k: gerekçeli ret artık `HATA`dan ayrı, çünkü "sistem çöktü" ile "sistem değerlendirdi ve yapmadı" aynı şey değil.
+
+Denetleyicideki "kendi test sonucuyla çelişemez" kuralının eşleniği planlayıcıya da kondu: `UYGUN` derken 10'dan fazla özel durum veya harici varlık ihtiyacı bildirirse karar geçersiz sayılır. **İki geçersiz kılma nedeni de mevcut spesifikasyondan türetildi** (U2 ölçütü ve §2.2'deki harici varlık yasağı); yeni kural icat edilmedi.
+
+**(2) Rol bazlı anahtar kasası.** `security/key_vault.py` + 25 test.
+
+**Karar sahibi:** Her iki fikir de **insana ait.** Enum'u AI yazmış ve sorgulamamıştı; sabit listenin karmaşıklık için kötü bir vekil ölçü olduğunu insan fark etti. Anahtar girişi ve "data leak'i önleyecek şekilde" kısıtı da insandan geldi.
+
+**İnsan müdahalesi — AI'ın önerisi reddedilen kısım:**
+
+İnsan RAG sordu. AI **hayır** dedi ve gerekçelendirdi: uygulanabilirlik bir arama değil bir yargıdır; model bu oyunların kurallarını zaten biliyor; ve 3 günde toplanacak 6–8 belge üzerinde vektör araması, o belgeleri doğrudan bağlama koymaktan kesinlikle daha kötüdür (üstüne gömme modeli, indeks, eşik gibi sessizce bozulabilecek üç parça ekler). Bunun yerine RAG'in işe yarayan kısmı — kabul kriterlerinin koşudan koşuya kaymaması — için **sürümlü kural kartı deposu** önerildi ve Faz 4'e, MCP şartını karşılayacak biçimde not düşüldü.
+
+**Güvenlik değerlendirmesi — istenen özellik neyi açıyor:**
+
+Anahtar girişi, sisteme üçüncü taraf kimlik bilgisi emanet etmek demek. Yedi sızıntı yolu belirlendi ve her biri için bir kural + en az bir test yazıldı: diske yazma, geri okuma, istisna izinde `repr` dökümü, sağlayıcı hata mesajının (401) transkripte yazılması, doğrulama hatasının anahtarı yankılaması, alt sürece geçme, yerel ağdan erişim.
+
+En çok işe yarayan tasarım kararı: **`redact()` desen değil birebir dize eşleşmesi kullanıyor.** Anahtarın tam değeri bilindiği için eşleşme kesin — desen tabanlı sır taramasının bilinen belirsizliği (S3) kullanıcı anahtarları için geçerli değil. Bu, mevcut bir bilinen sınırı yeni özellik için **daraltan** bir karar.
+
+Ayrıca konteyner portu `0.0.0.0` yerine `127.0.0.1`'e bağlandı. Arayüz artık anahtar kabul ettiği için yerel ağdaki başka makinelerden erişilebilir olmamalı.
+
+**Dürüstçe bırakılan açık:** arayüzün önünde kimlik doğrulama yok. Anahtar girildikten sonra `localhost:8000`'e erişebilen herkes o anahtarla istek başlatabilir. Bu, tek kullanıcılı yerel çalıştırma varsayımının (V3) doğrudan sonucu ve **S5 olarak bilinen sınırlar tablosuna yazıldı** — gizlenmedi. Azaltıcılar: yerel ağa kapalı port, bellekte tutulan ve konteyner durunca kaybolan anahtar, açık temizleme eylemi.
+
+---
+
 ## Sonraki kayıt
 
-Kayıt 2.2'de Faz 2 (sandbox ve güvenlik modülleri) ile `docs/analiz.md` işlenecek.
+Kayıt 2.1'de Faz 2 (sandbox ve güvenlik modülleri) ile `docs/analiz.md` işlenecek.
