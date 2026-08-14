@@ -24,3 +24,16 @@ services:
       # Linux'ta host.docker.internal tanımlı değildir; Ollama host'ta
       # çalışırken erişilebilsin diye açıkça eşlenir.
       - "host.docker.internal:host-gateway"
+
+  # Testler:  docker compose run --rm test
+  #
+  # Ayrı bir servis çünkü tests/ imaja girmez (.dockerignore) — üretim imajı
+  # yalın kalsın diye. Test koşusunda proje /app üzerine bağlanır.
+  # profiles, "docker compose up" ile birlikte başlamasını engeller.
+  test:
+    build: .
+    image: gtech-agent-atolyesi:1.0
+    profiles: ["test"]
+    volumes:
+      - .:/app
+    command: ["python", "-m", "pytest"]

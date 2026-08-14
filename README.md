@@ -40,6 +40,15 @@ docker compose up --build
 Ollama kullanacaksanız host makinede çalışıyor olması yeterlidir;
 konteyner `host.docker.internal:11434` üzerinden erişir.
 
+### Testler
+
+```bash
+docker compose run --rm test
+```
+
+Testler de konteynerde koşar; host'a pytest kurulmaz. Hiçbir otomatik test
+gerçek API çağrısı yapmaz.
+
 ---
 
 ## Belgeler

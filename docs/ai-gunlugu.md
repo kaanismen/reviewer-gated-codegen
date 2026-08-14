@@ -302,6 +302,46 @@ Sebep: V8, pointer-compression için devasa bir **sanal** adres alanı ayırır.
 
 ---
 
+### Kayıt 1.9 — Teslim biçimi kararları ve Faz 1
+
+**Prompt:**
+
+> teslim formatı zip dosyası olarak belirliyorum. Ama aynı zamanda versiyonlama takibi için GitHub'da private bir repo açmak istiyorum. Demo işini ben kayıt alacağım sıkıntı yok. Bireysel olarak geliştiriyorum.
+>
+> Faz 1 e başlayabilirsin. Benim dikkat etmem gereken şeyleri veyahut doğrulamamı istediğin şeyleri faz 1 sonrası belirtebilirsin. Eğer gerekli değilse devam edebiliriz.
+
+**AI çıktısı — özet:**
+
+Üç açık soru insan tarafından kapatıldı: **zip teslim + private GitHub repo** (zip teslim edilen şey, repo çalışma geçmişi), **kayıtlı demo**, **bireysel geliştirme**. Git deposu başlatıldı, Faz 0 ayrı bir commit olarak işlendi. `.gitattributes` eklendi — Windows'ta geliştirilip Linux konteynerde çalışan bir projede CRLF, temiz bir klonda derlemeyi bozabilir.
+
+Faz 1 üretimi: `transcript/models.py` (§7'nin tamamı, pydantic), `transcript/store.py` (JSON + Markdown dışa aktarım, KK-07), `orchestrator/state_machine.py` (16 geçiş), `limits.py`'ye `BudgetTracker` (enjekte edilebilir saat), dört test dosyası + fabrikalar. **95 test, 0.38 saniye, sıfır LLM çağrısı.** Test servisi `docker compose run --rm test` olarak compose'a eklendi.
+
+**Karar sahibi:** Teslim biçimi kararları **insan**. Faz 1 tasarımı AI.
+
+**İnsan müdahalesi:** Doğrudan müdahale olmadı; ancak insanın "dikkat etmem gereken şeyleri belirt" talimatı, aşağıdaki iki bulgunun rapor edilmesini zorunlu kıldı.
+
+**Denetim bulgusu 1 — test, gerçek bir hata yakaladı (Türkçe küçük harf):**
+
+İlerleme-yok koruması red gerekçelerini karşılaştırıyor ve karşılaştırmadan önce `lower()` uyguluyordu. Python'un `lower()` metodu **'İ' harfini 'i' + birleşik nokta (U+0307) olarak açar**, dolayısıyla `"EKSİK".lower() != "eksik"`. Gerekçelerin tamamı Türkçe olduğu için bu, aynı gerekçenin farklı yazımını "yeni gerekçe" sayacak ve **KK-03'teki ilerleme-yok korumasını sessizce devre dışı bırakacaktı.** Sistem hata vermez, sadece durması gereken yerde durmaz; MAX_TUR dolana kadar boşuna tur harcardı.
+
+Türkçe I/İ çeviri tablosu eklendi (`İ→i`, `I→ı`; kalan harfleri standart `lower()` doğru çeviriyor) ve beş yazım varyantı ile noktasız I için testler yazıldı. **Bu hatayı insan değil test yakaladı** — ve testin kendisi AI tarafından, "her koruma koşulunun hem geçen hem düşen hali sınanır" kuralı gereği yazılmıştı.
+
+**Denetim bulgusu 2 — spesifikasyonda üç yazılmamış dal:**
+
+`PROJECT.md` §4.2 tablosu uygulanmaya çalışılınca üç boşluk çıktı:
+
+| Boşluk | Nasıl ortaya çıktı |
+|---|---|
+| G3r | Tablo "şema hatası (2. kez) → HATA" diyor; **1. kezin nereye gittiği yazılı değil.** Yeniden deneme hakkı ima ediliyor ama geçiş tanımsız |
+| G9r | Aynı sorun denetleyici ayrıştırma hatasında. KK-05 "bir kez yeniden dener" diyor, tablo demiyor |
+| G6s | KK-06 "sır bulunursa KABUL geçersiz sayılır ve red turu başlatılır" diyor; **bu dal geçiş tablosunda hiç yok** |
+
+Üçü de eklendi (`PROJECT.md` v1.4). Bu, kabul kriterleri ile geçiş tablosunun **birbirinden bağımsız yazıldığında sessizce çelişebileceğini** gösteriyor: her ikisi de doğru görünüyordu, uyuşmadıkları ancak kod yazılırken anlaşıldı.
+
+**Bilinçli olarak KAPATILMAYAN boşluk:** `karar = KABUL` iken `onem = kritik` bir bulgu varsa ne olmalı? §7.4 yalnızca test sonucu kuralını tanımlıyor. AI kendiliğinden ikinci bir iş kuralı **icat etmedi**; mevcut davranış (KABUL geçerli sayılır) `test_kritik_bulgulu_kabul_su_an_kabul_sayilir` testiyle kayda geçirildi ve karar insana bırakıldı. Gerekçe: Kayıt 1.7 ve 1.8'in dersi, AI'ın makul görünen ama doğrulanmamış kararlarının spesifikasyona sessizce sızmasının asıl risk olduğu yönünde.
+
+---
+
 ## Sonraki kayıt
 
-Kayıt 2.1'de Faz 1 (durum makinesi ve mesaj şemaları) ile `docs/analiz.md` işlenecek.
+Kayıt 2.2'de Faz 2 (sandbox ve güvenlik modülleri) ile `docs/analiz.md` işlenecek.

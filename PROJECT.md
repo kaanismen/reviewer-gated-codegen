@@ -242,17 +242,22 @@ Host'ta Python, Node veya bağımlılık kurulumu **yoktur**. Tek ön koşul Doc
 |---|---|---|---|---|
 | G1 | *(başlangıç)* | görev alındı | `PLANLANIYOR` | Görev metni boş değil ve ≤ 2000 karakter |
 | G2 | `PLANLANIYOR` | plan üretildi | `UYGULANIYOR` | Plan JSON şeması geçerli, ≥ 1 kabul kriteri var |
+| G3r | `PLANLANIYOR` | şema hatası (1. kez) | `PLANLANIYOR` | Yeniden deneme hakkı var — planlayıcı tekrar çağrılır |
 | G3 | `PLANLANIYOR` | şema hatası (2. kez) | `HATA` | Yeniden deneme hakkı tükendi |
 | G4 | `UYGULANIYOR` | dosyalar yazıldı | `DENETLENIYOR` | ≥ 1 dosya yazıldı, tüm yollar workspace içinde |
 | G5 | `UYGULANIYOR` | yol ihlali | `HATA` | Sandbox politikası ihlali — kurtarma yok |
 | G6 | `DENETLENIYOR` | karar = `KABUL` | `KABUL_EDILDI` | Tüm testler geçti **ve** sır taraması temiz |
+| G6s | `DENETLENIYOR` | karar = `KABUL` | `REDDEDILDI` | Sır taraması bulgu verdi — kabul geçersiz (KK-06) |
 | G7 | `DENETLENIYOR` | karar = `RED` | `REDDEDILDI` | `tur < max_tur` |
 | G8 | `DENETLENIYOR` | karar = `RED` | `LIMIT_ASILDI` | `tur >= max_tur` |
+| G9r | `DENETLENIYOR` | karar ayrıştırılamadı (1. kez) | `DENETLENIYOR` | Yeniden deneme hakkı var (KK-05) |
 | G9 | `DENETLENIYOR` | karar ayrıştırılamadı (2. kez) | `HATA` | Yapısal JSON dönmedi |
 | G10 | `REDDEDILDI` | revizyon başlat | `UYGULANIYOR` | Red gerekçesi son 2 turdakiyle aynı değil |
 | G11 | `REDDEDILDI` | ilerleme yok | `LIMIT_ASILDI` | Aynı red gerekçesi 2 kez üst üste |
 | G12 | *(herhangi)* | token/süre/maliyet aşımı | `LIMIT_ASILDI` | Bkz. §5 |
 | G13 | *(herhangi)* | beklenmeyen istisna | `HATA` | — |
+
+**Olay seçimi `karar` alanına bakılarak yapılmaz.** `event_for_review()` tek giriş noktasıdır ve §7.4 iş kuralını uygular; böylece kuralı uygulamayı unutan bir çağrı yeri T4'ü yeniden açamaz.
 
 **Her son durumda sistem gerekçeli bir rapor üretir.** `LIMIT_ASILDI` ve `HATA` sessizce sonlanmaz; hangi limitin dolduğu, hangi turda ve son red gerekçesinin ne olduğu transkripte ve kullanıcıya yazılır.
 
@@ -342,6 +347,8 @@ Aşağıdakiler kapatılmamış açıklardır. Gizlenmeleri yerine, sonuçlarıy
 | `token_cikti` | int | ✔ | ≥ 0 |
 | `maliyet_usd` | decimal(8,5) | ✔ | Sağlayıcı fiyatından hesaplanır; Ollama için `0` |
 
+**Köken alanlarının zorunluluğu rol bazlıdır.** `prompt_surumu`, `prompt_hash` ve `model` **agent rolleri için zorunludur** — bu üçü olmadan bir agent mesajı transkripte giremez. `rol = sistem` mesajlarının promptu ve modeli olmadığından bu alanlar onlarda boştur. v1.0'da kural koşulsuz yazılmıştı; Faz 1'de sistem mesajları eklenince rol bazlı hale getirildi.
+
 ### 7.2 `icerik` — planlayıcı
 
 | Alan | Tip | Zorunlu | İş kuralı |
@@ -356,7 +363,7 @@ Aşağıdakiler kapatılmamış açıklardır. Gizlenmeleri yerine, sonuçlarıy
 | Alan | Tip | Zorunlu | İş kuralı |
 |---|---|---|---|
 | `yazilan_dosyalar` | object[] | ✔ | Her biri `{yol, bayt, hash}`; en az 1 kayıt |
-| `arac_cagrilari` | object[] | ✔ | MCP çağrı kaydı; boş olabilir ama alan zorunlu |
+| `arac_cagrilari` | object[] | ✔ | MCP çağrı kaydı; her biri `{arac, ozet, basarili}`. Boş olabilir ama alan zorunlu |
 | `not` | string | ✖ | Uygulayıcının serbest açıklaması; karar üzerinde etkisi yok |
 
 ### 7.4 `icerik` — denetleyici *(kritik şema)*
@@ -459,5 +466,6 @@ Bir teslim, aşağıdakilerin tamamı sağlandığında bitmiş sayılır:
 |---|---|---|
 | 1.0 | 14.08.2026 | İlk sürüm — kapsam, mimari, durum makinesi, şemalar, güvenlik politikası |
 | 1.1 | 14.08.2026 | **Eğitmen makinesinde dockerize çalışma şartı eklendi (K5).** §3.3 dağıtım mimarisi, iki kademeli sandbox modu, anahtarsız `replay` başlangıcı ve imaj kısıtları eklendi. §6'ya Docker soketi bağlama takası (S1) ve yedek mod izolasyon zaafı (S2) bilinen sınır olarak yazıldı. §2.3 V1 ve §12 tamamlanma ölçütü güncellendi |
+| 1.4 | 14.08.2026 | **Faz 1 — uygulamadan geri beslenen spesifikasyon boşlukları.** §4.2'ye üç geçiş eklendi: G3r ve G9r (tabloda "2. kez" denen yeniden deneme haklarının 1. kez dalları yazılı değildi), G6s (KK-06'daki "sır bulunursa KABUL geçersiz" dalı tabloda yoktu). §4.2'ye `event_for_review()` kuralı, §7.1'e köken alanlarının rol bazlı zorunluluğu, §7.3'e `arac_cagrilari` iç şeması eklendi. 95 test yeşil |
 | 1.3 | 14.08.2026 | **Ölçüm düzeltmesi (Faz 0).** Docker Desktop/WSL2 altında yapılan ölçüm, `RLIMIT_AS`'in Node için yanlış kaldıraç olduğunu gösterdi — 512 MB'de meşru kod bile çöküyor. Bellek tavanı `RLIMIT_DATA`ya çevrildi; §3.3'e gerekçe ve ölçüm referansı, §5'e not eklendi, §6/T2 güncellendi. Ölçüm betiği: `tests/manual/rlimit_olcumu.py`. Diğer üç rlimit, ayrıcalık düşürme ve duvar saati doğrulandı |
 | 1.2 | 14.08.2026 | **Docker içinde Docker kaldırıldı.** Tek konteyner, tek imaj (Python + Node); Docker soketi bağlanmıyor, uygulama konteyner başlatmıyor. Sandbox artık süreç düzeyinde katmanlı izolasyon: ayrıcalık düşürme, rlimit'ler, zaman aşımı, yol kısıtı, ortam temizliği ve yeni **statik içe aktarma izin listesi** (T2b). §6 bilinen sınırlar tablosu baştan yazıldı — eski S1 (soket ayrıcalığı) ve S2 (yedek mod) ortadan kalktı; yerine ağ ad alanı izolasyonunun yokluğu (S1) ve desen tabanlı denetimin sınırı (S2) geldi. §5'e rlimit değerleri eklendi |

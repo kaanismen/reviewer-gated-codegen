@@ -9,8 +9,10 @@ hata senaryosu ucuza gösterilebilir.
 from __future__ import annotations
 
 import os
+import time
 from dataclasses import dataclass, fields
 from decimal import Decimal
+from typing import Callable
 
 
 def _int(var: str, default: int) -> int:
@@ -74,3 +76,72 @@ class Limits:
 
 
 LIMITS = Limits.from_env()
+
+
+@dataclass(frozen=True)
+class BudgetBreach:
+    """Dolan bir tavanın adı ve okunabilir gerekçesi."""
+
+    limit_name: str
+    detail: str
+
+
+class BudgetTracker:
+    """Token, maliyet ve duvar saati tavanlarını izler.
+
+    Saat dışarıdan verilir: testler sahte bir sayaçla süre aşımını gerçekten
+    beklemeden sınayabilsin diye (PROJECT.md §10, "sahte saat ve sayaçlarla
+    sınır durumları").
+    """
+
+    def __init__(
+        self,
+        limits: Limits | None = None,
+        clock: Callable[[], float] = time.monotonic,
+    ) -> None:
+        self.limits = limits if limits is not None else LIMITS
+        self._clock = clock
+        self._started_at = clock()
+        self.tokens_in = 0
+        self.tokens_out = 0
+        self.cost_usd = Decimal("0")
+
+    def add_usage(self, tokens_in: int, tokens_out: int, cost_usd: Decimal) -> None:
+        self.tokens_in += tokens_in
+        self.tokens_out += tokens_out
+        self.cost_usd += cost_usd
+
+    @property
+    def tokens_total(self) -> int:
+        return self.tokens_in + self.tokens_out
+
+    @property
+    def elapsed_sec(self) -> float:
+        return self._clock() - self._started_at
+
+    def check(self, turn: int) -> BudgetBreach | None:
+        """Tur başında çağrılır. Dolan ilk tavanı döndürür, yoksa None.
+
+        Sıra bilinçlidir: tur tavanı en anlaşılır gerekçedir, bu yüzden
+        önce sorulur.
+        """
+        if turn > self.limits.max_turns:
+            return BudgetBreach(
+                "MAX_TUR", f"tur {turn} > tavan {self.limits.max_turns}"
+            )
+        if self.tokens_total > self.limits.max_tokens_total:
+            return BudgetBreach(
+                "MAX_TOKEN_TOPLAM",
+                f"{self.tokens_total} token > tavan {self.limits.max_tokens_total}",
+            )
+        if self.cost_usd > self.limits.max_cost_usd:
+            return BudgetBreach(
+                "MAX_MALIYET_USD",
+                f"${self.cost_usd} > tavan ${self.limits.max_cost_usd}",
+            )
+        if self.elapsed_sec > self.limits.max_duration_sec:
+            return BudgetBreach(
+                "MAX_SURE_SN",
+                f"{self.elapsed_sec:.0f} sn > tavan {self.limits.max_duration_sec} sn",
+            )
+        return None
