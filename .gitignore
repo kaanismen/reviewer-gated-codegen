@@ -1,0 +1,16 @@
+# Sırlar — asla commit edilmez (PROJECT.md §6/T7)
+.env
+
+# Üretilen oyunlar
+workspaces/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+
+# Office geçici dosyaları
+~$*

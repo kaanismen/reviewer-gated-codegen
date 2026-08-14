@@ -1,0 +1,7 @@
+# Depo LF ile tutulur. Windows'ta geliştirilip Linux konteynerde çalışan bir
+# projede CRLF, temiz bir klonda derlemeyi veya betikleri bozabilir.
+* text=auto eol=lf
+
+*.pptx binary
+*.png binary
+*.jpg binary

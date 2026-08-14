@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent Oyun Atölyesi</title>
+<style>
+  :root {
+    --bg: #0f1115; --panel: #171a21; --line: #262b36;
+    --fg: #e6e9ef; --muted: #8b93a7;
+    --ok: #4ade80; --warn: #fbbf24; --err: #f87171;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 15px/1.6 ui-sans-serif, "Segoe UI", system-ui, sans-serif;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 40px 20px 64px; }
+  h1 { font-size: 24px; margin: 0 0 4px; letter-spacing: -0.02em; }
+  .sub { color: var(--muted); margin: 0 0 32px; }
+  .panel {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 10px; padding: 20px 22px; margin-bottom: 18px;
+  }
+  .panel h2 {
+    font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--muted); margin: 0 0 14px; font-weight: 600;
+  }
+  .row {
+    display: flex; align-items: baseline; gap: 12px;
+    padding: 7px 0; border-bottom: 1px solid var(--line);
+  }
+  .row:last-child { border-bottom: 0; }
+  .row .k { flex: 0 0 220px; color: var(--muted); }
+  .row .v { flex: 1; font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: 13px; }
+  .dot { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+  .ok .dot { background: var(--ok); } .warn .dot { background: var(--warn); } .err .dot { background: var(--err); }
+  .note { color: var(--muted); font-size: 13px; margin-top: 14px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 6px 18px; }
+  .grid div { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; padding: 3px 0; }
+  .grid span:first-child { color: var(--muted); }
+  .grid span:last-child { font-family: ui-monospace, Consolas, monospace; }
+  .phase { color: var(--muted); font-size: 13px; }
+  .phase b { color: var(--fg); font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Agent Oyun Atölyesi</h1>
+  <p class="sub">Planlayıcı → Uygulayıcı → Denetleyici · prompt'tan oynanabilir oyuna</p>
+
+  <div class="panel">
+    <h2>Kurulum denetimi</h2>
+    <div id="checks"><div class="row"><span class="dot"></span><span class="v">Yükleniyor…</span></div></div>
+    <p class="note" id="providerNote"></p>
+  </div>
+
+  <div class="panel">
+    <h2>Etkin limitler</h2>
+    <div class="grid" id="limits"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Durum</h2>
+    <p class="phase"><b>Faz 0 tamamlandı.</b> Dockerize çalıştırma doğrulandı.
+    Sohbet kutusu ve canlı transkript Faz 5'te bu sayfaya eklenecek.</p>
+  </div>
+</div>
+
+<script>
+const rowHTML = (state, key, value) =>
+  `<div class="row ${state}"><span class="dot"></span><span class="k">${key}</span><span class="v">${value}</span></div>`;
+
+fetch("/api/health").then(r => r.json()).then(h => {
+  const rows = [
+    ["ok", "Web sunucusu", h.durum],
+    ["ok", "Python", h.python],
+    [h.node ? "ok" : "err", "Node (node --test)", h.node || "BULUNAMADI"],
+    [h.konteyner ? "ok" : "warn", "Çalışma ortamı", h.konteyner ? "konteyner" : "host (geliştirme)"],
+    [h.runner_kullanicisi ? "ok" : "warn", "runner kullanıcısı", h.runner_kullanicisi ? "var" : "yok — sandbox ayrıcalık düşüremez"],
+    [h.workspaces_yazilabilir ? "ok" : "err", "workspaces dizini", h.workspaces],
+    [h.cevrimdisi_mod ? "warn" : "ok", "LLM sağlayıcısı", h.saglayici],
+  ];
+  document.getElementById("checks").innerHTML = rows.map(r => rowHTML(...r)).join("");
+  document.getElementById("providerNote").textContent = h.saglayici_gerekce;
+  document.getElementById("limits").innerHTML = Object.entries(h.limitler)
+    .map(([k, v]) => `<div><span>${k}</span><span>${v}</span></div>`).join("");
+}).catch(e => {
+  document.getElementById("checks").innerHTML = rowHTML("err", "Sağlık ucu", String(e));
+});
+</script>
+</body>
+</html>

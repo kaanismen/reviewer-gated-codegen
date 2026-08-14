@@ -1,0 +1,26 @@
+# Tek çalıştırma yolu:  docker compose up
+#
+# .env dosyası ZORUNLU DEĞİLDİR. Yoksa aşağıdaki değişkenler boş kalır ve
+# sistem replay sağlayıcısıyla açılır (PROJECT.md §3.3, anahtarsız çalışabilirlik).
+# Compose, varsa proje kökündeki .env dosyasını değişken ikamesi için
+# kendiliğinden okur; env_file bildirimi kullanılmaz çünkü eski Compose
+# sürümlerinde eksik dosya hata verir.
+
+services:
+  atolye:
+    build: .
+    image: gtech-agent-atolyesi:1.0
+    ports:
+      - "${WEB_PORT:-8000}:8000"
+    environment:
+      LLM_PROVIDER: ${LLM_PROVIDER:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+    volumes:
+      # Üretilen oyunlar konteyner kapansa da hosttan incelenebilir kalır.
+      - ./workspaces:/workspaces
+    extra_hosts:
+      # Linux'ta host.docker.internal tanımlı değildir; Ollama host'ta
+      # çalışırken erişilebilsin diye açıkça eşlenir.
+      - "host.docker.internal:host-gateway"
