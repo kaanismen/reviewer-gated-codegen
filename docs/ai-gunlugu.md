@@ -854,6 +854,42 @@ Altı yeni test, ilki doğrudan kullanıcının bildirdiği senaryoyu kurgular: 
 
 ---
 
+### Kayıt 4.4 — Arayüzün yalanı ve testlerin kirlenmesi
+
+**Prompt:**
+
+> ufak bir hata düzeltmesi daha. Her görev sonrası tekrar modellere gidip hepsine teker teker kaydet basmak zorunda kalıyorum.
+
+**Karar sahibi:** İnsan.
+
+### Önce doğrulandı: veri kaybolmuyordu
+
+Rapor "ayar kayboluyor" gibi okunuyordu; tahmin etmek yerine bakıldı. Disk, API ve rol çözümlemesi üçü de doğruydu — üç rolün seçimi yerindeydi. Yani **kayıp yoktu, görüntü yanlıştı.**
+
+Sebep: görev bitiminde `saglikYenile()` çağrılıyor ve o da rol satırlarını **yıkıp yeniden kuruyordu**. Model açılır kutusu tek seçenekle geri geliyor, kullanıcı açınca "liste boş, ayar gitmiş" izlenimi doğuyor ve yeniden kaydediyordu.
+
+Kullanıcının yaptığı iş gereksizdi ama **davranışı doğruydu**: arayüz ona kaybolmuş gibi gösteriyordu.
+
+### Düzeltme
+
+Üç parça:
+
+1. `saglikYenile({roller: false})` — görev bitiminde rol satırlarına dokunulmuyor. Yapılandırma değişmediyse yeniden çizmek için sebep yok.
+2. Katalog önbellekteyse liste **hemen** doldurluyor; ayrıca etkin sağlayıcıların kataloğu arka planda getiriliyor. Tek seçenekli açılır kutu durumu ortadan kalktı.
+3. **tümünü kaydet** düğmesi — kullanıcının cümlesindeki "hepsine teker teker" kısmına doğrudan cevap.
+
+### Denetim bulgusu — testler host durumuna bağımlı hale gelmişti
+
+Düzeltmeden sonra `test_anahtar_girisi_rol_saglayici_secimini_degistirir` düştü. Sebep kod değil: `src/web/app.py` modül düzeyinde **gerçek** seçim dosyasını (`data/model-secimleri.json`) yüklüyor, testler de o modülü kullanıyordu. Benim makinemdeki seçimler `openai` olduğu için test, anahtar girişinin sağlayıcıyı değiştirmesini bekleyip bulamadı.
+
+Yani test paketi sessizce **geliştiricinin yerel tercihlerine bağımlı** hale gelmişti. Bu makinede kırmızı, temiz bir klonda yeşil olurdu — ya da tersi. Faz 2'deki `tmp_path` olayının (Kayıt 2.1) aynı ailesinden: test ortamı üretimden veya diğer geliştiricilerden farklı olduğunda test bir şey kanıtlamaz.
+
+Fixture artık `selections`'ı geçici bir dizine bağlıyor ve ilgili ortam değişkenlerini temizliyor. Üç yeni uç testi eklendi.
+
+**Dikkat edilen nokta:** `selections.clear()` çağırmak testi düzeltirdi ama **kullanıcının gerçek seçim dosyasını silerdi**. Yalıtım, temizlikle değil değiştirmeyle yapıldı.
+
+---
+
 ## Sonraki kayıt
 
-Kayıt 4.4'te red/revizyon döngüsünü tetikleyecek koşu ve demo hazırlığı işlenecek.
+Kayıt 4.5'te red/revizyon döngüsünü tetikleyecek koşu ve demo hazırlığı işlenecek.

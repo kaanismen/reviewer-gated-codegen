@@ -9,15 +9,30 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
+from src.llm.selection import SelectionStore
+from src.web import app as app_module
 from src.web.app import app, vault
 
 ANAHTAR = "sk-ant-api03-TESTANAHTARI-abcdefghijklmnop-9f3a"
 
 
 @pytest.fixture
-def client(monkeypatch):
+def client(monkeypatch, tmp_path):
+    """Uçları host durumundan YALITIR.
+
+    `src.web.app` modül düzeyinde gerçek seçim dosyasını (`data/`) yükler.
+    Yalıtılmazsa testler geliştiricinin kendi model seçimlerine bağımlı
+    hale gelir — nitekim geldi ve bir test o yüzden düştü. Kasa da her
+    testte boşaltılır.
+    """
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    for name in ("LLM_PROVIDER", "MODEL_PLANLAYICI", "MODEL_UYGULAYICI",
+                 "MODEL_DENETLEYICI"):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setattr(
+        app_module, "selections", SelectionStore(tmp_path / "model-secimleri.json")
+    )
     vault.clear()
     with TestClient(app) as test_client:
         yield test_client
@@ -138,6 +153,48 @@ def test_fazladan_alan_reddedilir(client):
         },
     )
     assert response.status_code == 422
+
+
+def test_model_secimi_kaydedilir_ve_rolu_degistirir(client):
+    """Seçim hem sağlayıcıyı hem modeli belirler (v2.3)."""
+    client.post(
+        "/api/anahtarlar",
+        json={"rol": "planlayici", "saglayici": "anthropic", "anahtar": ANAHTAR},
+    )
+    r = client.post(
+        "/api/modeller/secim",
+        json={"rol": "planlayici", "saglayici": "anthropic", "model": "claude-haiku-4-5"},
+    )
+    assert r.status_code == 200
+
+    rol = next(x for x in client.get("/api/health").json()["roller"]
+               if x["rol"] == "planlayici")
+    assert rol["model"] == "claude-haiku-4-5"
+    assert rol["model_kaynagi"] == "secim"
+    assert rol["saglayici_kaynagi"] == "secim"
+
+
+def test_secim_kaldirilinca_otomatige_doner(client):
+    client.post(
+        "/api/anahtarlar",
+        json={"rol": "planlayici", "saglayici": "anthropic", "anahtar": ANAHTAR},
+    )
+    client.post(
+        "/api/modeller/secim",
+        json={"rol": "planlayici", "saglayici": "anthropic", "model": "claude-haiku-4-5"},
+    )
+    client.delete("/api/modeller/secim?rol=planlayici")
+
+    rol = next(x for x in client.get("/api/health").json()["roller"]
+               if x["rol"] == "planlayici")
+    assert rol["saglayici_kaynagi"] == "anahtar"
+    assert rol["model"] == "claude-opus-5"
+
+
+def test_katalog_anahtarsiz_reddedilir(client):
+    r = client.get("/api/modeller?saglayici=anthropic")
+    assert r.status_code == 400
+    assert "anahtar" in r.json()["detail"]
 
 
 def test_anahtarlar_temizlenebilir(client):

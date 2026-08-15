@@ -142,6 +142,7 @@
 
       <h2 style="margin-top:18px">Agent sağlayıcıları ve modelleri</h2>
       <div id="roles"></div>
+      <div style="margin-top:10px"><button type="button" id="rolesSaveAll">tümünü kaydet</button></div>
       <p class="note" id="rolesNote"></p>
       <form id="keyForm" autocomplete="off" style="margin-top:14px">
         <select id="keyRole" aria-label="Rol">
@@ -178,7 +179,10 @@ const esc = s => String(s ?? "").replace(/[&<>"]/g, c =>
 const rowHTML = (state, key, value) =>
   `<div class="row ${state}"><span class="dot"></span><span class="k">${key}</span><span class="v">${esc(value)}</span></div>`;
 
-function saglikYenile() {
+// `roller: false` → rol satırlarına DOKUNMA. Görev bitiminde yalnızca
+// kaset sayısı ve kütüphane değişir; satırları yeniden çizmek kullanıcının
+// açtığı model listesini siler ve ayar sıfırlanmış gibi görünür.
+function saglikYenile({ roller = true } = {}) {
   return fetch("/api/health").then(r => r.json()).then(h => {
     $("checks").innerHTML = [
       ["ok", "Python", h.python],
@@ -191,8 +195,10 @@ function saglikYenile() {
     $("limits").innerHTML = Object.entries(h.limitler)
       .map(([k, v]) => `<div><span>${k}</span><span>${esc(v)}</span></div>`).join("");
 
-    const anahtarlar = Object.fromEntries(h.anahtarlar.map(a => [a.rol, a.maske]));
-    rolleriCiz(h.roller, anahtarlar);
+    if (roller) {
+      const anahtarlar = Object.fromEntries(h.anahtarlar.map(a => [a.rol, a.maske]));
+      rolleriCiz(h.roller, anahtarlar);
+    }
 
     $("keyNote").textContent =
       `${h.kaset_sayisi} kayıtlı senaryo${h.kayit_modu ? " · KAYIT MODU açık" : ""}. ` +
@@ -233,42 +239,12 @@ function rolleriCiz(roller, anahtarlar) {
     const prov = satir.querySelector(".prov");
     const model = satir.querySelector(".model");
 
-    const doldur = async () => {
-      const saglayici = prov.value;
-      if (saglayici === "replay" || saglayici === "ollama") {
-        model.innerHTML = `<option value="${esc(model.value)}">${esc(model.value)}</option>`;
-        return;
-      }
-      model.innerHTML = `<option>yükleniyor…</option>`;
-      try {
-        const modeller = await katalogAl(saglayici);
-        const secili = model.dataset.secili || "";
-        model.innerHTML = modeller.map(m =>
-          `<option value="${esc(m.id)}"${m.id === secili ? " selected" : ""}>${esc(m.etiket)}</option>`
-        ).join("") || `<option value="">(model bulunamadı)</option>`;
-      } catch (err) {
-        model.innerHTML = `<option value="">${esc(err.message)}</option>`;
-      }
-    };
-
-    prov.addEventListener("change", () => { model.dataset.secili = ""; doldur(); });
+    prov.addEventListener("change", () => modelleriDoldur(satir, ""));
     model.addEventListener("focus", () => {
-      if (model.options.length <= 1) { model.dataset.secili = model.value; doldur(); }
-    }, { once: false });
-
-    satir.querySelector(".save").addEventListener("click", async () => {
-      const govde = { rol: satir.dataset.rol, saglayici: prov.value, model: model.value };
-      if (!govde.model) return;
-      const r = await fetch("/api/modeller/secim", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(govde),
-      });
-      $("rolesNote").textContent = r.ok
-        ? `${govde.rol} → ${govde.saglayici} / ${govde.model} kaydedildi.`
-        : "Kaydedilemedi: " + ((await r.json()).detail || r.status);
-      if (r.ok) saglikYenile();
+      if (model.options.length <= 1) modelleriDoldur(satir, model.value);
     });
 
+    satir.querySelector(".save").addEventListener("click", () => satiriKaydet(satir));
     satir.querySelector(".reset").addEventListener("click", async () => {
       await fetch(`/api/modeller/secim?rol=${encodeURIComponent(satir.dataset.rol)}`,
                   { method: "DELETE" });
@@ -276,13 +252,73 @@ function rolleriCiz(roller, anahtarlar) {
         `${satir.dataset.rol} seçimi kaldırıldı; anahtara göre otomatik belirlenecek.`;
       saglikYenile();
     });
+
+    // Katalog önbellekte varsa listeyi HEMEN doldur. Tek seçenekli bir
+    // açılır kutu kullanıcıya "ayar kayboldu" gibi görünüyordu.
+    if (katalogOnbellek[prov.value]) modelleriDoldur(satir, model.value);
   });
 
+  // Etkin sağlayıcıların kataloğunu arka planda getir; bir sonraki
+  // çizimde liste zaten dolu gelir.
+  [...new Set(roller.map(r => r.saglayici))]
+    .filter(s => s === "anthropic" || s === "openai")
+    .filter(s => !katalogOnbellek[s])
+    .forEach(s => katalogAl(s).then(() => {
+      $("roles").querySelectorAll(".rolerow").forEach(satir => {
+        const secili = satir.querySelector(".model").value;
+        if (satir.querySelector(".prov").value === s) modelleriDoldur(satir, secili);
+      });
+    }).catch(() => {}));
+
   $("rolesNote").textContent =
-    "Model listesi sağlayıcının kendi kataloğundan alınır — açılır kutuya " +
-    "tıklayın. Seçim diske yazılır ve yeniden başlatmayı aşar; anahtarlar aksine " +
-    "yalnızca bellekte durur.";
+    "Seçim diske yazılır ve hem görevler hem yeniden başlatma boyunca kalır; " +
+    "anahtarlar aksine yalnızca bellekte durur.";
 }
+
+async function modelleriDoldur(satir, secili) {
+  const prov = satir.querySelector(".prov");
+  const model = satir.querySelector(".model");
+  const saglayici = prov.value;
+
+  if (saglayici === "replay" || saglayici === "ollama") {
+    model.innerHTML = `<option value="${esc(secili || model.value)}">${esc(secili || model.value)}</option>`;
+    return;
+  }
+  if (!katalogOnbellek[saglayici]) model.innerHTML = `<option>yükleniyor…</option>`;
+  try {
+    const modeller = await katalogAl(saglayici);
+    model.innerHTML = modeller.map(m =>
+      `<option value="${esc(m.id)}"${m.id === secili ? " selected" : ""}>${esc(m.etiket)}</option>`
+    ).join("") || `<option value="">(model bulunamadı)</option>`;
+  } catch (err) {
+    model.innerHTML = `<option value="">${esc(err.message)}</option>`;
+  }
+}
+
+async function satiriKaydet(satir) {
+  const govde = {
+    rol: satir.dataset.rol,
+    saglayici: satir.querySelector(".prov").value,
+    model: satir.querySelector(".model").value,
+  };
+  if (!govde.model) return null;
+  const r = await fetch("/api/modeller/secim", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(govde),
+  });
+  return r.ok ? govde : Promise.reject((await r.json()).detail || r.status);
+}
+
+$("rolesSaveAll").addEventListener("click", async () => {
+  const satirlar = [...$("roles").querySelectorAll(".rolerow")];
+  try {
+    for (const satir of satirlar) await satiriKaydet(satir);
+    $("rolesNote").textContent = `${satirlar.length} rolün seçimi kaydedildi.`;
+    saglikYenile();
+  } catch (hata) {
+    $("rolesNote").textContent = "Kaydedilemedi: " + hata;
+  }
+});
 
 // ---------------------------------------------------------------- kütüphane
 const DURUM_ETIKET = {
@@ -448,7 +484,8 @@ function gorevBaslat(gorev) {
     kutuphaneYenile().then(() => {
       if (d.son_durum === "KABUL_EDILDI" && d.gorev_id) oyunOynat(d.gorev_id, gorev);
     });
-    saglikYenile();
+    // Rol satırları KORUNUR: görev bitiminde yapılandırma değişmedi.
+    saglikYenile({ roller: false });
   });
 
   kaynak.onerror = () => { kaynak.close(); $("taskGo").disabled = false; };
