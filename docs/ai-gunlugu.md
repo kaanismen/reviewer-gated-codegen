@@ -174,6 +174,7 @@ Rubrikteki "denetim raporu" gereksinimi için, bu aşamada AI çıktısının g�
 | Statik içe aktarma denetiminin yeterliliği | **Desen tabanlı — teorik olarak atlatılabilir** | Dize birleştirmeyle modül adı üreten gizlenmiş kod denetimi aşabilir. Negatif testlerle sınanacak; atlatılsa bile ayrıcalık düşürme, rlimit ve konteyner sınırı devrede kalır (tek katman değil, son katman delinir) |
 | rlimit'lerin Docker Desktop altında uygulandığı | ⚠️ **Ölçüldü — kısmen yanlış çıktı** | `RLIMIT_CPU`, `RLIMIT_FSIZE`, `RLIMIT_NPROC` ve ayrıcalık düşürme doğrulandı. Ancak **`RLIMIT_AS` seçimi hatalıydı**: 512 MB'de meşru kod bile çöküyor. `RLIMIT_DATA`ya çevrildi. Ölçüm: `tests/manual/rlimit_olcumu.py`, ayrıntı Kayıt 1.8 |
 | `docker compose up` eğitmen makinesinde çalışır | ✅ **Doğrulandı** (14.08, Faz 0) | Temiz derleme 464 MB imaj üretti, `.env` yokken açıldı, sağlık ucu yeşil |
+| Oyunun iframe'de CSP altında açıldığı | ⬜ **Doğrulanacak — tarayıcıda** | HTTP başlıkları doğrulandı ama "sayfa gerçekten açılıyor mu" ancak tarayıcıda görülür. `sandbox="allow-scripts"` opak kaynak yaratır; `logic.js`'in yüklendiği gözle teyit edilmeli |
 
 **Açık risk:** Tabloda "tahmin" ve "test edilmedi" işaretli satırlar henüz doğrulanmamış AI çıktısıdır. Faz 0 üç satırı kapattı ve bir tanesinin **yanlış olduğunu** ortaya çıkardı. Kalan açık maddeler: token tahminleri, "satranç çok zor" iddiası, statik denetimin atlatılabilirliği.
 
@@ -455,6 +456,44 @@ Dördüncüsünü **yeni yazılan test yakaladı**, insan da AI de gözden kaç�
 
 ---
 
+### Kayıt 2.3 — U4 ölçütünün daraltılması ve oyun kütüphanesi
+
+**Prompt:**
+
+> dikkatimi çeken tek şey plannerda uygulanabilirlikte ses dosyası gereksinimi. Burasını pek anlamadım. Şimdi misal flappy bird yap desem normalde her tıklamada ses çıkıyor sırf bunun yüzünden uygulanamaz mı diyecek? Bir de öyle bir ayarlayalım ki mesela ilk oyun yapıldı onu kaydetsin arkasına ikinci bir oyun girdiğimizde onu de yeni bir dosyaya hazırlasın ve hazır olan oyunlar arasında geçiş sağlayabilelim.
+
+**AI çıktısı — özet:**
+
+İki iş. (1) U4 ölçütü yeniden yazıldı. (2) `transcript/library.py` + üç API ucu + arayüzde oyun listesi; 28 yeni test.
+
+**Karar sahibi:** Her iki tespit de **insana ait.**
+
+**Denetim bulgusu — ölçüt yanlış ifade edilmişti:**
+
+U4 "harici varlık (görsel, ses, veri dosyası) gerekiyor mu" diye yazılmıştı. İnsanın sorusu ölçütün hatalı olduğunu ortaya çıkardı: **flappy bird'ün tıklama sesi bir dosya gerektirmez** — Web Audio osilatörüyle üretilir, saf koddur. Ölçütün asıl kaynağı §2.2'deki tek dosyalık teslim kısıtıdır, "ses olmasın" kuralı değil.
+
+Bu, AI'ın yaptığı bir **soyutlama hatasıydı**: gerçek kısıt ("yanında başka dosya taşınmasın") yerine onun bir sonucu ("harici varlık olmasın") ölçüt olarak yazılmış, sonuç da kaynaktan geniş kalmıştı. Kimse fark etmeseydi flappy bird, asteroids, space invaders gibi kapsam içi olması gereken oyunlar yalnızca ses ürettikleri için reddedilecekti — ve ret **gerekçeli** olacağı için makul bile görünecekti.
+
+U4 artık "harici varlık **dosyası**" diyor ve prompt'a somut bir sınama sorusu eklendi: *"Bu oyun tek bir HTML dosyası olarak, yanında başka hiçbir dosya olmadan teslim edilebilir mi?"* Flappy bird örneği de prompt'a kapsam içi örnek olarak girdi.
+
+**Tasarım kararı — kütüphane ayrı indeks tutmaz:**
+
+Oyun listesi bir `index.json` dosyasında değil, her görevin kendi `transkript.json` dosyasından türetiliyor. Gerekçe: iki kayıt olsaydı ikisi sapabilirdi. Tek kaynak, sapma imkânsız. Yarım kalmış koşuların artıkları (transkripti olmayan dizinler) listelenmiyor — oynanabilir bir oyunmuş gibi görünmemeliler.
+
+**Yeni saldırı yüzeyi ve kapatılması:** görev kimliği artık **URL yolundan** geliyor. İki katman kondu: dosya adı izin listesi (`game.html`, `logic.js`, `logic.test.js`, `transkript.json`, `transkript.md`) ve yol koruması. `../gizli`, `/etc/passwd`, `g-001/../../kacis` gibi denemeler test edildi ve canlı sistemde de 404 döndüğü doğrulandı.
+
+**Denetim bulgusu 2 — süreç sandbox'ı tarayıcıyı kapsamıyor (T2c):**
+
+Oyunu iframe'e koyarken fark edildi: `PROJECT.md` §3.3'teki yedi katman **yalnızca test alt sürecini** koruyor. `game.html` eğitmenin tarayıcısında çalışıyor ve orada rlimit de, ayrıcalık düşürme de, statik içe aktarma denetimi de yok — üstelik `game.html` zaten statik denetimden muaf tutulmuştu (tarayıcıda çalışır gerekçesiyle). Yani sistemin en dikkatle korunan tarafı testler, en az korunan tarafı ise kullanıcının fiilen çalıştırdığı şeydi.
+
+Sunum katmanında kendi kısıtı kuruldu: `connect-src 'none'` (ağ çıkışı yok), `img-src data:` (uzak görsel URL'si de bir sızıntı kanalıdır), `form-action 'none'`, ve iframe `sandbox="allow-scripts"`.
+
+İlk denemede iframe'e `allow-same-origin` de verilmişti. Bu **sessiz bir baypastı**: aynı kaynağı paylaşan bir iframe ana sayfayı script'leyebilir ve onun ağ erişimini kullanarak kendi CSP'sini atlatabilirdi. Kaldırıldı. Kaldırınca ikinci bir sorun çıktı — belge opak kaynağa düştüğü için `script-src 'self'` sunucuya çözülmüyor ve `logic.js` engelleniyordu; CSP'ye sunucu kaynağı açıkça yazıldı.
+
+**Doğrulanmayan, doğrulanacak:** CSP ve iframe kısıtlarının birlikte çalıştığı **tarayıcıda görsel olarak** teyit edilmeli. HTTP başlıkları doğrulandı (`curl` düzeyinde), ancak "oyun iframe'de gerçekten açılıyor mu" sorusu ancak sayfa açılarak yanıtlanır. Denetim tablosuna eklendi.
+
+---
+
 ## Sonraki kayıt
 
-Kayıt 2.3'te Faz 3 (sağlayıcı katmanı ve record/replay) ile `docs/analiz.md` işlenecek.
+Kayıt 2.4'te Faz 3 (sağlayıcı katmanı ve record/replay) ile `docs/analiz.md` işlenecek.

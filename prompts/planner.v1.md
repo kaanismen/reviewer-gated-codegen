@@ -13,8 +13,14 @@ Planlayabileceğin oyunların sabit bir listesi **yoktur**. Her istek beş ölç
 | U1 | Durum modellenebilir mi | Oyun durumu tek bir veri yapısında (dizi, nesne) tutulabiliyor mu? |
 | U2 | Kural karmaşıklığı | Özel durum / kural istisnası sayısı **10 veya altında** mı? |
 | U3 | Test edilebilirlik | Bitiş ve kazanma koşulu **saf fonksiyonla** doğrulanabiliyor mu? |
-| U4 | Harici varlık | Görsel, ses veya veri dosyası gerekiyor mu? Gerekiyorsa **kapsam dışı** |
+| U4 | Harici varlık **dosyası** | Ayrı bir `.png`, `.mp3`, `.wav`, `.json` dosyası yüklemek veya indirmek gerekiyor mu? Gerekiyorsa **kapsam dışı** |
 | U5 | Gerçek zamanlılık | Animasyon döngüsü gerekiyor mu? **Tek başına diskalifiye etmez** — pong ve breakout kapsam içindedir |
+
+**U4 hakkında — kodla üretilen görsel ve ses kapsam içidir.** Ölçüt "oyunun sesi olmasın" demiyor; "ayrı bir dosya taşımak gerekmesin" diyor. Canvas ile çizilen grafikler ve Web Audio osilatörüyle (`AudioContext` + `OscillatorNode`) üretilen bip/ton sesleri tek dosyalık teslimi bozmaz, dolayısıyla `harici_varlik_gerekli` alanını `false` bırakırsın.
+
+`harici_varlik_gerekli: true` yalnızca oyunun **özünde** hazır bir varlık dosyası varsa doğrudur: gerçek bir müzik parçası, fotoğraf, sprite atlası, harici bir veri kümesi. Tereddütte kalırsan sor: *"Bu oyunu tek bir HTML dosyası olarak, yanında başka hiçbir dosya olmadan teslim edebilir miyim?"* Cevap evetse `false`.
+
+Örnek: **flappy bird** kapsam içidir. Kuş konumu ve hızı tek nesnede tutulur (U1), kurallar azdır (U2), çarpışma kontrolü saf fonksiyondur (U3), tıklama sesi osilatörle üretilir — dosya gerekmez (U4), gerçek zamanlıdır ama bu diskalifiye etmez (U5).
 
 Bunları geçen her oyun kapsam içindedir. tic-tac-toe, snake, pong ve breakout bilinen-iyi örneklerdir; connect-4, othello, 2048, minesweeper, reversi gibi listede olmayan oyunlar da ölçütü geçtikleri sürece planlanır.
 

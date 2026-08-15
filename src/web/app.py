@@ -12,17 +12,48 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from src.config import WORKSPACES_ROOT, in_container, resolve_provider
 from src.orchestrator.limits import LIMITS
+from src.transcript.library import GameLibrary
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 
 app = FastAPI(title="Agent Oyun Atölyesi", version="0.1.0")
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+library = GameLibrary(WORKSPACES_ROOT)
+
+# Üretilen oyun tarayıcıda çalışır — yani süreç sandbox'ının (§3.3)
+# DIŞINDADIR. Oradaki katmanların hiçbiri burada geçerli değil, o yüzden
+# tarayıcı tarafında kendi kısıtı gerekir.
+#
+# Kritik satır `connect-src 'none'`: oyun sayfası fetch/XHR/WebSocket
+# açamaz, dolayısıyla dışarı veri aktaramaz. `img-src data:` uzak görsel
+# URL'sini de kapatır — bir görsel isteği de sızıntı kanalıdır.
+#
+# `'self'` yerine açık host yazılmasının sebebi: oyun `sandbox="allow-scripts"`
+# ile (allow-same-origin OLMADAN) gömülür, dolayısıyla belge **opak kaynağa**
+# sahiptir ve `'self'` sunucuya çözülmez — `logic.js` engellenirdi.
+# allow-same-origin verilmemesi bilinçli: verilseydi oyun ana sayfayı
+# script'leyip onun ağ erişimini kullanarak bu CSP'yi baypas edebilirdi.
+_LOCAL_ORIGINS = "http://localhost:* http://127.0.0.1:*"
+
+GAME_CSP = (
+    "default-src 'none'; "
+    f"script-src 'unsafe-inline' {_LOCAL_ORIGINS}; "
+    f"style-src 'unsafe-inline' {_LOCAL_ORIGINS}; "
+    "img-src data: blob:; "
+    "media-src data:; "
+    "font-src data:; "
+    "connect-src 'none'; "
+    "form-action 'none'; "
+    "frame-src 'none'; "
+    "base-uri 'none'"
+)
 
 
 def _node_version() -> str | None:
@@ -69,6 +100,57 @@ def health() -> dict[str, object]:
         "workspaces_yazilabilir": WORKSPACES_ROOT.is_dir(),
         "limitler": LIMITS.as_dict(),
     }
+
+
+@app.get("/api/oyunlar")
+def list_games() -> dict[str, object]:
+    """Üretilmiş tüm oyunlar, en yeniden eskiye.
+
+    Liste ayrı bir indeks dosyasından değil, her görevin transkriptinden
+    türetilir; iki kaydın birbirinden sapması imkânsız olur.
+    """
+    entries = library.entries()
+    return {
+        "oyunlar": [e.as_dict() for e in entries],
+        "toplam": len(entries),
+        "oynanabilir": sum(1 for e in entries if e.oynanabilir),
+    }
+
+
+@app.get("/api/oyunlar/{gorev_id}")
+def get_game(gorev_id: str) -> dict[str, object]:
+    entry = library.get(gorev_id)
+    if entry is None:
+        raise HTTPException(status_code=404, detail="görev bulunamadı")
+    return entry.as_dict()
+
+
+@app.delete("/api/oyunlar/{gorev_id}")
+def delete_game(gorev_id: str) -> dict[str, object]:
+    if not library.delete(gorev_id):
+        raise HTTPException(status_code=404, detail="görev bulunamadı")
+    return {"silindi": gorev_id}
+
+
+@app.get("/oyun/{gorev_id}/{dosya}")
+def serve_game_file(gorev_id: str, dosya: str) -> FileResponse:
+    """Üretilen oyun dosyasını sunar.
+
+    İki katmanlı koruma: dosya adı izin listesinde olmalı ve görev kimliği
+    yol korumasından geçmeli (`..` veya mutlak yol kabul edilmez). Yanıta
+    oyun sayfası için sıkı CSP eklenir.
+    """
+    path = library.file_path(gorev_id, dosya)
+    if path is None:
+        raise HTTPException(status_code=404, detail="dosya bulunamadı")
+    return FileResponse(
+        path,
+        headers={
+            "Content-Security-Policy": GAME_CSP,
+            "X-Content-Type-Options": "nosniff",
+            "Cache-Control": "no-store",
+        },
+    )
 
 
 @app.get("/")

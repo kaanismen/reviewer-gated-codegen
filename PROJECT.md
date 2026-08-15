@@ -46,6 +46,7 @@ Sistemin ayırt edici özelliği agent'ların konuşması değil, **birbirini re
 | Arayüz | Web — canlı transkript + oyun iframe'i + transkript dışa aktarımı |
 | Sağlayıcılar | Anthropic (Claude), OpenAI, Ollama, ve test için sahte sağlayıcı |
 | Kalıcılık | Transkript ve üretilen dosyalar diske yazılır, oturum sonrası erişilebilir |
+| **Oyun kütüphanesi** | Her görev kendi dizininde kalır; üretilen oyunlar listelenir ve arayüzden **aralarında geçiş yapılır**. Yeni bir görev öncekini ezmez |
 
 ### 2.1.1 Uygulanabilirlik ölçütü
 
@@ -56,8 +57,10 @@ Sabit bir oyun listesi, "başa çıkabileceğimiz karmaşıklık" için **kötü
 | U1 | Oyun durumu tek bir veri yapısında tutulabiliyor mu | Kapsam dışı |
 | U2 | Özel durum (kural istisnası) sayısı ≤ 10 mu | Kapsam dışı |
 | U3 | Bitiş/kazanma koşulu **saf fonksiyonla** test edilebiliyor mu | Kapsam dışı |
-| U4 | Harici varlık (görsel, ses, veri dosyası) gerekiyor mu | Gerekiyorsa kapsam dışı (§2.2) |
+| U4 | Harici varlık **dosyası** (`.png`, `.mp3`, sprite atlası, veri kümesi) gerekiyor mu | Gerekiyorsa kapsam dışı (§2.2) |
 | U5 | Gerçek zamanlı animasyon gerekiyor mu | **Tek başına diskalifiye etmez** — pong ve breakout kapsam içidir |
+
+**U4 kodla üretilen varlığı kapsamaz.** Ölçüt "ses veya grafik olmasın" değil, "ayrı dosya taşınmasın" der — kısıtın kaynağı tek dosyalık teslimdir (§2.2), sesin kendisi değil. Canvas çizimleri ve Web Audio osilatörüyle üretilen tonlar saf koddur ve `harici_varlik_gerekli = false` sayılır. Sınama sorusu: *"Bu oyun tek bir HTML dosyası olarak, yanında başka hiçbir dosya olmadan teslim edilebilir mi?"* Bu ayrım olmadan **flappy bird gibi kapsam içi olması gereken oyunlar yalnızca tıklama sesi yüzünden reddedilirdi.**
 
 Planlayıcı bu değerlendirmeyi **yapısal veri olarak** döndürür (§7.2), serbest metin olarak değil; böylece denetlenebilir ve sınanabilir. Ölçütü geçemeyen görev `KAPSAM_DISI` son durumuna gider — bu bir hata değil, gerekçeli bir rettir.
 
@@ -131,7 +134,7 @@ gtech-agent-atolyesi/
 │   │                    ollama_provider.py, replay_provider.py }
 │   ├── tools/         { registry.py, fs_mcp.py, test_runner.py }
 │   ├── sandbox/       { process_runner.py, rlimits.py, import_guard.py }
-│   ├── transcript/    { models.py, store.py }
+│   ├── transcript/    { models.py, store.py, library.py }
 │   ├── security/      { path_guard.py, secret_scan.py, input_guard.py }
 │   └── web/           { app.py, static/index.html }
 ├── tests/
@@ -344,6 +347,7 @@ Bu sistemin merkezinde **AI'ın ürettiği kodun gerçekten çalıştırılması
 | T1 | Sandbox kaçışı — workspace dışına yazma | Tüm yollar kanonik hale getirilir (`Path.resolve()`) ve workspace kökü altında olduğu doğrulanır; `..`, mutlak yol, null bayt, ters bölü ve **dışarıyı gösteren sembolik bağlantı** reddedilir | `test_security.py` (T1 bölümü, 8 test) |
 | T2 | Keyfi kod yürütme | Yalnızca `node --test`; ayrıcalıksız `runner` kullanıcısı, `RLIMIT_CPU/DATA/NPROC/FSIZE/CORE`, süreç grubuna `SIGKILL`, workspace'e kısıtlı çalışma dizini, temizlenmiş ortam (yalnızca `PATH`, `HOME`, `LANG`, `NODE_ENV`), 64 KB çıktı tavanı | `test_sandbox.py` (10 test — gerçek süreç başlatır) |
 | T2b | **Ağ üzerinden sızma / dışa veri aktarımı** | Kod **çalıştırılmadan önce** statik olarak taranır. Yaklaşım **izin listesidir**: yalnızca `node:test`, `node:assert`, `node:assert/strict` ve göreli yollar geçer; bilinmeyen her modül reddedilir. Ayrıca dinamik `require`/`import`, `eval`, `new Function`, `fetch`, `XMLHttpRequest`, `process.env`, `process.binding`, `process.dlopen`, `WebAssembly` reddedilir. Red, denetleyiciye **kritik bulgu** olarak iletilir ve kod hiç çalıştırılmaz | `test_security.py` (T2b bölümü, 26 test) |
+| T2c | **Tarayıcıda çalışan üretilmiş kod** | Oyun tarayıcıda çalışır, yani §3.3'teki süreç sandbox'ının **dışındadır**; oradaki katmanların hiçbiri geçerli değildir. Kendi kısıtı sunum katmanında kurulur: `connect-src 'none'` ağ çıkışını (fetch/XHR/WebSocket) kapatır, `img-src data:` uzak görsel URL'si üzerinden sızıntıyı engeller, `form-action 'none'` form gönderimini keser. Oyun `sandbox="allow-scripts"` ile gömülür — **`allow-same-origin` bilinçli olarak verilmez**, verilseydi oyun ana sayfayı script'leyip onun ağ erişimiyle CSP'yi baypas edebilirdi | `test_library.py` (sunum izin listesi) + tarayıcıda elle doğrulama |
 | T3 | Prompt injection | Savunma yapısaldır, tespite dayalı değil: görev metni **veri** olarak sınırlandırılmış blok içinde iletilir, sınırlayıcıyı taklit eden içerik etkisizleştirilir, kontrol ve görünmez karakterler (sıfır genişlikli, yön değiştiren) temizlenir, karakter sınırı uygulanır, prompt'lar çalışma anında değiştirilemez. Hata mesajları görev metnini yankılamaz | `test_security.py` (T3 bölümü, 9 test) |
 | T4 | **Sahte KABUL** | Denetleyicinin kararı **yapısal JSON** olarak ayrıştırılır. Serbest metin içinde geçen "KABUL" kelimesi karar sayılmaz — üretilen kodun içindeki bir yorum satırı sistemi kandıramaz. Olay seçimi `event_for_review()` üzerinden yapılır | `test_reviewer_parsing.py` |
 | T4b | **Sahte test kanıtı** | Üretilen kod `console.log('# pass 99')` yazarak TAP özetini taklit edebilir. İki bağımsız önlem: ayrıştırıcı **son** özet satırını alır (gerçek özet çıktının sonundadır) ve **çıkış kodu** ayrıca kontrol edilir — çıkış kodu enjekte edilemez | `test_sandbox.py::test_sahte_ozet_test_kosucusunu_da_kandiramaz` |
@@ -516,6 +520,7 @@ Bir teslim, aşağıdakilerin tamamı sağlandığında bitmiş sayılır:
 |---|---|---|
 | 1.0 | 14.08.2026 | İlk sürüm — kapsam, mimari, durum makinesi, şemalar, güvenlik politikası |
 | 1.1 | 14.08.2026 | **Eğitmen makinesinde dockerize çalışma şartı eklendi (K5).** §3.3 dağıtım mimarisi, iki kademeli sandbox modu, anahtarsız `replay` başlangıcı ve imaj kısıtları eklendi. §6'ya Docker soketi bağlama takası (S1) ve yedek mod izolasyon zaafı (S2) bilinen sınır olarak yazıldı. §2.3 V1 ve §12 tamamlanma ölçütü güncellendi |
+| 1.8 | 14.08.2026 | **U4 daraltıldı + oyun kütüphanesi.** U4 ölçütü "harici varlık" değil **"harici varlık dosyası"** olarak yeniden yazıldı: kodla üretilen görsel (canvas) ve ses (Web Audio osilatörü) kapsam içidir. Bu ayrım olmadan flappy bird gibi kapsam içi olması gereken oyunlar yalnızca tıklama sesi yüzünden reddedilirdi. §2.1'e oyun kütüphanesi eklendi: her görev kendi dizininde kalır, üretilen oyunlar listelenir ve aralarında geçiş yapılır; liste ayrı bir indeksten değil transkriptlerden türetilir. §6'ya **T2c (tarayıcıda çalışan üretilmiş kod)** eklendi — süreç sandbox'ı tarayıcıyı kapsamaz, kısıt CSP ve iframe sandbox'ı ile kurulur. 264 test yeşil |
 | 1.7 | 14.08.2026 | **Prompt–şema uyumu.** İnsan tarafından yazılan `prompts/*.v1.md` ile kodun zorladığı şemalar karşılaştırıldı ve dört sapma bulundu (ayrıntı: AI günlüğü Kayıt 2.2). §7.4'e iki iş kuralı eklendi: `RED` en az bir bulgu içermelidir (şema düzeyinde zorlanır) ve **`test_sonucu` orkestratör tarafından ölçülen değerlerle değiştirilir** — beyan edilen sayı karar denetimini atlatamaz. `onem` değerlerinin aksansız yazıldığı vurgulandı. Yeni test dosyası `test_prompt_ornekleri.py`: prompt'lardaki her JSON örneği gerçek şemaya karşı doğrulanıyor, sapma artık sessizce oluşamaz. 236 test yeşil |
 | 1.6 | 14.08.2026 | **Faz 2 — sandbox ve güvenlik uygulandı.** `path_guard`, `secret_scan`, `input_guard`, `import_guard`, `launcher`, `process_runner`, `test_runner`. §3.3'e iki tasarım notu: fırlatıcı süreç (`preexec_fn` kilitlenme riski nedeniyle kullanılmadı) ve erişim devri. §6'ya tehdit **T4b (sahte test kanıtı)** eklendi — TAP özeti enjeksiyonu, son-eşleşme ayrıştırma + çıkış kodu ile iki bağımsız önlemle kapatıldı. Tehdit tablosundaki test sütunları gerçek test adlarıyla dolduruldu. 221 test yeşil |
 | 1.5 | 14.08.2026 | **Kapsam ölçüte bağlandı + rol bazlı anahtar girişi.** §2.1.1 uygulanabilirlik ölçütü (U1–U5) eklendi; `oyun` alanı sabit enum olmaktan çıkıp serbest ada dönüştü ve §7.2'ye `uygulanabilirlik` nesnesi ile "planlayıcı kendi ölçümüyle çelişemez" iş kuralı geldi. Yeni son durum `KAPSAM_DISI` ve geçiş G2k — gerekçeli ret artık teknik hatadan ayrı. Satırancın kapsam dışılığı isim yasağı olmaktan çıkıp U2 ölçütünün sonucu oldu. §3.3'e "Rol bazlı anahtar girişi", §6'ya tehdit T8 ve bilinen sınır S5 eklendi; konteyner portu `127.0.0.1`'e bağlandı. 141 test yeşil |
