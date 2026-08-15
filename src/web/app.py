@@ -374,6 +374,21 @@ def _config_warning(roller: list) -> str:
             f"ürettiği özgün çıktı için kaset bulunmaz. Eksik rollere de anahtar "
             f"girin veya anahtarları tamamen temizleyip kayıtlı senaryoları kullanın."
         )
+
+    # Saf replay: kasetler modele bağlıdır. Farklı bir model seçilmişse
+    # kayıt bulunamaz ve koşu o adımda durur — sessizce olmamalı.
+    if replay and not canli:
+        kayitli = ReplayProvider(CASSETTES_DIR).recorded_models()
+        if kayitli:
+            uyumsuz = [r for r in roller if r.model not in kayitli]
+            if uyumsuz:
+                adlar = ", ".join(f"{r.rol.value}={r.model}" for r in uyumsuz)
+                return (
+                    f"Kayıtlı senaryo modundasınız ama seçili modeller kasetlerle "
+                    f"uyuşmuyor ({adlar}). Kasetler şu modellerle kaydedildi: "
+                    f"{', '.join(sorted(kayitli))}. Koşu bu rolde duracaktır — "
+                    f"model seçimini sıfırlayın veya anahtar girin."
+                )
     return ""
 
 

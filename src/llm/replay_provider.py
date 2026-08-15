@@ -56,6 +56,26 @@ class ReplayProvider(LlmProvider):
             return 0
         return len(list(self.cassettes_dir.glob("*.json")))
 
+    def recorded_models(self) -> set[str]:
+        """Kasetlerin hangi modellerle kaydedildiği.
+
+        Kaset parmak izi modeli içerir; başka bir model seçilirse kayıt
+        bulunamaz. Bu, replay modunda sessizce başarısızlığa yol açan en
+        sık sebep — seçim değiştirildiği anda kasetler geçersiz olur.
+        """
+        if not self.cassettes_dir.is_dir():
+            return set()
+        models: set[str] = set()
+        for path in self.cassettes_dir.glob("*.json"):
+            try:
+                data = json.loads(path.read_text(encoding="utf-8"))
+            except (json.JSONDecodeError, OSError):
+                continue
+            model = (data.get("istek") or {}).get("model")
+            if model:
+                models.add(str(model))
+        return models
+
     def recorded_tasks(self) -> list[str]:
         """Kasetlerden oynatılabilir görev metinlerini çıkarır.
 

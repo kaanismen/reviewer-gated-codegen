@@ -223,6 +223,19 @@ def test_hicbir_anahtar_yoksa_uyari_yok(client):
     assert data["cevrimdisi_mod"] is True
 
 
+def test_replayde_kasetsiz_model_secimi_uyarir(client):
+    """Gerçek koşuda yaşandı: demo kopyasında kalmış bir model seçimi
+    (denetleyici → claude-sonnet-5) kasetlerle uyuşmadığı için kayıtlı
+    senaryo denetleyici adımında düştü."""
+    client.post(
+        "/api/modeller/secim",
+        json={"rol": "denetleyici", "saglayici": "anthropic", "model": "yok-boyle-model"},
+    )
+    uyari = client.get("/api/health").json()["yapilandirma_uyarisi"]
+    assert "kasetlerle" in uyari
+    assert "yok-boyle-model" in uyari
+
+
 def test_katalog_anahtarsiz_reddedilir(client):
     r = client.get("/api/modeller?saglayici=anthropic")
     assert r.status_code == 400
