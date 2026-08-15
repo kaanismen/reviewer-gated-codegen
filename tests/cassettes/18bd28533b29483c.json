@@ -1,0 +1,29 @@
+{
+  "parmak_izi": "18bd28533b29483c",
+  "kayit_zamani": "2026-08-15T11:07:40.531783+00:00",
+  "istek": {
+    "model": "gpt-5.4",
+    "max_tokens": 16000,
+    "system_sha256": "993e3e6079c7785b",
+    "messages": [
+      {
+        "rol": "user",
+        "icerik": "<<<KULLANICI_GOREVI>>>\nsnake oyunu yaz, yilan yem yiyince uzasin ve kendine carpinca oyun bitsin\n<<<KULLANICI_GOREVI_SON>>>"
+      }
+    ]
+  },
+  "yanit": {
+    "metin": "{\n  \"oyun\": \"snake\",\n  \"uygulanabilirlik\": {\n    \"karar\": \"UYGUN\",\n    \"gerekce\": \"Yılan gövdesi, yön ve yem konumu tek durum nesnesinde tutulabilir; yeme, duvara ve kendine çarpma kuralları azdır ve saf fonksiyonlarla test edilebilir.\",\n    \"ozel_durum_sayisi\": 5,\n    \"gerekli_ozellikler\": [\"yılan konum dizisi\", \"yön güncelleme\", \"yem yeme ve uzama\", \"çarpışma kontrolü\", \"oyun bitiş durumu\"],\n    \"gercek_zamanli\": true,\n    \"harici_varlik_gerekli\": false\n  },\n  \"adimlar\": [\n    \"Tahtayı genişlik ve yükseklik değerleriyle, yılanı koordinat dizisiyle, yönü vektörle ve yemi tek koordinatla temsil eden bir durum nesnesi tanımla.\",\n    \"tekAdim(durum) fonksiyonunu yaz: başı mevcut yöne göre bir hücre ilerlet, yem yoksa kuyruğu çıkar, yem varsa gövdeyi uzat.\",\n    \"Yılan başının duvarla veya gövdesindeki herhangi bir hücreyle çarpışmasını kontrol eden oyunBittiMi(durum) fonksiyonunu yaz.\",\n    \"Yılan başı yem konumuna geldiğinde yeni yem için yılanın kaplamadığı boş hücrelerden rastgele seçim yapan yemUret(durum) fonksiyonunu ekle.\",\n    \"logic.js fonksiyonlarını game.html içinde zamanlayıcı tabanlı oyun döngüsüne bağla; ok tuşlarıyla yön değişsin ve oyun bitince girişler durdurulsun.\"\n  ],\n  \"kabul_kriterleri\": [\n    \"Yılan başı yem konumuna geldiğinde tekAdim() sonrası yılan uzunluğu 1 artar.\",\n    \"Yılan başı yem konumuna gelmediğinde tekAdim() sonrası yılan uzunluğu değişmez.\",\n    \"Yılan başı üst, alt, sol veya sağ sınırın dışına çıktığında oyunBittiMi() true döner.\",\n    \"Yılan başı gövdesindeki başka bir hücreyle aynı koordinata geldiğinde oyunBittiMi() true döner.\",\n    \"yemUret() yılanın kapladığı bir koordinatı hiçbir zaman döndürmez.\"\n  ],\n  \"dosyalar\": [\"logic.js\", \"logic.test.js\", \"game.html\"]\n}",
+    "model": "gpt-5.4-2026-03-05",
+    "saglayici": "openai",
+    "durdurma_nedeni": "stop",
+    "kullanim": {
+      "token_girdi": 3809,
+      "token_cikti": 552,
+      "onbellek_yazma": 0,
+      "onbellek_okuma": 0,
+      "maliyet_usd": "0.06569",
+      "fiyat_bilinen": false
+    }
+  }
+}

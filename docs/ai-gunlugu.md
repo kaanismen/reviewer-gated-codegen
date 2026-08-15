@@ -609,6 +609,111 @@ LLM `{"dosyalar": {...}}` döndürüyor; transkripte yazılan `ImplementerConten
 
 ---
 
+### Kayıt 3.3 — İnsan testi, 352 otomatik testin bulamadığını buldu
+
+**Prompt:**
+
+> tic-tac-toe sorunsuz çalıştı. connect-4 da tek sıkıntı sıra kırmızıdayken sarı yerleştirme yapıyor. Sarı renkle kırmızı rengi karıştırmış kazanma prensibi de aslında sarı kazandığında kırmızı kazandır diyor. Onun dışında gerçekten çalışıyor genel business logic. Bunları analizler ve günlüğe yazıp devam edelim.
+
+**AI çıktısı — özet:**
+
+Rapor olduğu gibi kabul edilmedi, üretilen kod okunarak teşhis doğrulandı. Hata `game.html` satır 61'de:
+
+```js
+const renkler = { K: '#ffeb3b', S: '#f44336' };   // K=kırmızı → sarı, S=sarı → kırmızı
+```
+
+**Karar sahibi:** İnsan — hatayı **oyunu oynayarak** buldu.
+
+### Teşhis: sistem doğru çalışmış, denetleyici haklıymış
+
+| Katman | Durum |
+|---|---|
+| `logic.js` | Doğru. Renk kavramından **tamamen habersiz**, işaretler üzerinde genel yazılmış |
+| `logic.test.js` | 9 test, planın 7 kabul kriterinin tamamını anlamlı biçimde doğruluyor |
+| `game.html` | **Hata burada** — ve boru hattında burayı doğrulayan hiçbir kapı yok |
+
+Denetleyicinin gerekçesi okunduğunda tamamı `logic.js` hakkında: "yedi kabul kriterinin tamamı anlamlı assertion'larla doğrulanıyor… logic.js DOM'a hiç dokunmuyor". **Denetleyici yanlış bir şey söylemedi.** Kendisine verilen görevi eksiksiz yaptı.
+
+### Asıl bulgu: boşluk kazara değil, yapısal
+
+Nedensellik zinciri şu:
+
+1. Planlayıcı prompt'u kriterleri "`node:assert` ile tek satırda test edilebilir" olacak şekilde yazmaya zorluyor — ki bu **iyi bir kural**, kriterlerin kalitesi buradan geliyor.
+2. Ama aynı kural, `game.html` ile ilgili hiçbir şeyin kabul kriteri **olamayacağını** garantiliyor: canvas çizimi assert edilemez.
+3. Denetleyici prompt'u estetiği denetlemiyor — doğru bir kısıt.
+4. "K hangi renk" sorusu **estetik gibi görünüyor**, oysa anlamsal bir eşleme.
+
+Yani sunum katmanı, iki doğru kuralın arasında kalan bir boşluğa düşüyor. Kimse hata yapmadı; sınır yanlış yerden geçiyordu.
+
+### Sınırın doğru yeri
+
+`PROJECT.md` §10.1 olarak yazıldı. Ayrım "mantık / sunum" değil şu olmalı:
+
+| Kategori | Nereye ait | Test edilebilir |
+|---|---|---|
+| Kural, durum, kazanma koşulu | `logic.js` | ✔ |
+| **İşaret → oyuncu/renk/etiket eşlemesi** | **`logic.js`** | ✔ |
+| Çizim, ölçü, animasyon, renk tonu | `game.html` | ✖ kabul edilen sınır |
+
+`logic.js` eşlemeyi dışa aktarsaydı (`OYUNCULAR = { K: {ad:'Kırmızı', renk:'#f44336'} }`) hem `game.html` oradan okurdu hem de ters yazım bir testle yakalanırdı.
+
+### Neden düzeltmeyi AI yapmıyor
+
+Çözüm prompt değişikliği gerektiriyor ve kural K4 gereği prompt'lar insana ait. İki aday `docs/analiz.md` A5 maddesine yazıldı; karar insanda. Kod tarafında yapılabilecek bir düzeltme yok — bu bir talimat sorunu, mekanizma sorunu değil.
+
+### Bu kaydın denetim değeri
+
+Projede **352 otomatik test** var ve hiçbiri bunu bulamazdı, çünkü hepsi doğrulanan katmanı doğruluyor. Bulan şey beş dakikalık insan oyunu oldu.
+
+Rubrikteki "AI kullanım olgunluğu" için asıl gösterilecek nokta bu: sistemin garantisi göründüğünden **dar**. "Testler geçti" ile "oyun doğru" aynı şey değil, ve bu proje ikincisini hiçbir zaman iddia etmemeliydi. Şimdi etmiyor — S6 ve R7 olarak yazılı.
+
+---
+
+### Kayıt 3.4 — Faz 5 ve yalnızca OpenAI ile koşu
+
+**Prompt:**
+
+> Faz 5 te sadece 1 koşu daha yapmanı istiyorum. Hatta Bu sefer sadece OpenAI key kullan.
+
+**AI çıktısı — özet:**
+
+Faz 5 arayüzü: sohbet kutusu, **SSE ile canlı transkript**, oyun oynatıcı, kütüphane ve katlanabilir ayarlar paneli. `/api/gorev/akis` ucu eklendi. Ardından üç rolün tamamı OpenAI'a alınarak tek koşu yapıldı.
+
+**Karar sahibi:** İnsan — hem koşu sayısını (1) hem sağlayıcıyı belirledi.
+
+### Sonuç: sağlayıcı değişimi gerçekten tek satır
+
+| | Anthropic (tic-tac-toe) | OpenAI (snake) |
+|---|---|---|
+| Sonuç | `KABUL_EDILDI`, 1 tur | `KABUL_EDILDI`, 1 tur |
+| Süre | ~85 sn | ~40 sn |
+| Girdi / çıktı token | 7.377 / 6.304 | 13.141 / 5.126 |
+| Test | 12 geçti | 5 geçti |
+| Kod değişikliği | — | **sıfır** |
+
+`LLM_PROVIDER=openai` ve `MODEL_*=gpt-5.4` dışında hiçbir şeye dokunulmadı. §8.2'deki "orkestratör hangi sağlayıcının çalıştığını bilmez" iddiası artık ölçülmüş.
+
+Girdi token farkı (7.377 → 13.141) prompt önbelleğinden geliyor: Anthropic tarafında ~2.500 token'lık sistem promptu önbelleğe alınıyor, OpenAI sağlayıcısında böyle bir mekanizma kullanılmıyor.
+
+### Model kimliği tahmin edilmedi
+
+`gpt-4o`, `gpt-5` gibi bir isim varsayıp göndermek yerine hesabın `/v1/models` ucu soruldu. Listede `gpt-5.6`'ya kadar modeller çıktı; `gpt-5.4` seçildi. Tahmin edilseydi büyük olasılıkla eski bir kimlik kullanılacaktı.
+
+### Denetim bulgusu — şişirilmiş maliyet teslim edilecek belgeye giriyordu
+
+`pricing.py` bilinmeyen bir model için **en pahalı bilinen tarifeyi** uyguluyor. Bu, harcama tavanı açısından doğru bir muhafazakârlık (Kayıt 3.1). Ancak `gpt-5.4`'ün fiyatı tabloda yok, dolayısıyla transkripte **$0.388 gibi kesin görünen ama gerçekte üst sınır olan** bir rakam yazılacaktı — ve transkript teslim edilen bir belge.
+
+Aynı sayı iki farklı işi görüyordu ve birinde doğru, diğerinde yanıltıcıydı. Ayrıştırıldı: `Usage.fiyat_bilinen` eklendi ve fiyatı bilinmeyen model kullanıldığında transkripte `maliyet_ust_sinir` sistem mesajı yazılıyor. Tahmin değişmedi, **tahmin olduğu görünür oldu.**
+
+### Yakalanan yapılandırma hatası
+
+İlk denemede sağlayıcı `openai`'a geçti ama model `claude-opus-5` kaldı — `MODEL_*` değişkenleri `docker-compose.yml`'de geçirilmiyordu. Koşu başlatılsaydı OpenAI'a Claude model kimliği gidecek ve anlamsız bir hata alınacaktı. Sağlık ucundaki rol tablosu bunu koşudan önce gösterdi; geçişler eklendi.
+
+Küçük bir olay ama sağlık ucunun neden **modeli de** raporladığını doğruluyor: yapılandırma hatası çalışma anında değil, bakışta görülmeli.
+
+---
+
 ## Sonraki kayıt
 
-Kayıt 3.3'te Faz 5 (canlı transkript arayüzü) işlenecek.
+Kayıt 4.1'de Faz 6 (teknik doküman, kullanım kılavuzu, demo) işlenecek.

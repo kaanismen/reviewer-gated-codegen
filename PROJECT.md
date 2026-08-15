@@ -345,6 +345,13 @@ Tavanların yerinde olup olmadığı ancak gerçek tüketim bilinince anlaşıl�
 | tic-tac-toe | `KABUL_EDILDI` | 1 | 7.377 | 6.304 | **$0.221** | ~85 sn |
 | connect-4 | `KABUL_EDILDI` | 1 | ~7.000 | ~6.000 | **$0.179** | ~90 sn |
 | satranç | `KAPSAM_DISI` | 1 | 74 | 1.040 | **$0.012** | ~15 sn |
+| snake *(yalnızca OpenAI, `gpt-5.4`)* | `KABUL_EDILDI` | 1 | 13.141 | 5.126 | ≤ $0.388 ¹ | ~40 sn |
+
+¹ **Üst sınır.** `gpt-5.4` fiyatı `pricing.py` tablosunda yok; maliyet en pahalı bilinen tarifeden hesaplandı. Transkripte bu durumu bildiren bir sistem mesajı yazılır (`maliyet_ust_sinir`) — rakam kesin bir değermiş gibi sunulmaz.
+
+**Sağlayıcı değişimi tek satır yapılandırma çıktı.** `LLM_PROVIDER=openai` + `MODEL_*=gpt-5.4` ile üç rol de OpenAI'a geçti; kodda hiçbir değişiklik gerekmedi. §8.2'deki "orkestratör hangi sağlayıcının çalıştığını bilmez" iddiası böylece ölçülmüş oldu.
+
+**Prompt önbelleğinin farkı burada görünüyor.** Anthropic koşusunda girdi 7.377 token'dı, OpenAI'da 13.141 — aradaki fark büyük ölçüde önbelleğe alınan sistem promptu. OpenAI sağlayıcısında önbellek kullanılmıyor.
 
 **Tavanlar fazlasıyla geniş.** `MAX_TOKEN_TOPLAM` 150.000, gerçek tüketim ~13.700 — yani tek turlu bir koşu tavanın %9'unu kullanıyor. Beş turluk en kötü durum bile tavanın altında kalır. Tavanlar düşürülmedi: amaçları normal kullanımı sınırlamak değil, **kontrolden çıkmış bir döngüyü durdurmak**.
 
@@ -380,6 +387,7 @@ Aşağıdakiler kapatılmamış açıklardır. Gizlenmeleri yerine, sonuçlarıy
 | S2 | Statik içe aktarma denetimi desen tabanlıdır | Yeterince gizlenmiş kod (dize birleştirmeyle modül adı üretme gibi) teoride denetimi atlatabilir | Dinamik `require`/`import()` biçimleri de topluca reddedilerek gizleme yüzeyi daraltıldı. Atlatılsa dahi kod hâlâ ayrıcalıksız kullanıcı, rlimit ve konteyner sınırı içindedir — tek katman değil, **son katman** delinmiş olur |
 | S3 | Sır taraması desen tabanlıdır | Bilinmeyen formatta bir anahtar yakalanmayabilir | 3 günlük kapsamda entropi tabanlı tarama kapsam dışı bırakıldı. API anahtarları alt sürece hiçbir zaman geçirilmez (ortam temizliği), dolayısıyla üretilen kodun sızdıracak bir anahtarı yoktur |
 | S4 | Konteyner kaçışı bu projenin tehdit modeli dışındadır | Docker'ın kendi izolasyonundaki bir zafiyet varsayılmamıştır | Konteyner sınırı en dış katmandır; onun ötesi platform sorumluluğudur |
+| S6 | **Sunum katmanı (`game.html`) hiçbir katman tarafından doğrulanmaz** | Mantık doğru olduğu hâlde oyun kullanıcıya yanlış görünebilir. **15.08'de fiilen gerçekleşti:** üretilen connect-4'te `logic.js` ve 9 test kusursuzdu, ama `game.html` içinde `{ K: '#ffeb3b', S: '#f44336' }` eşlemesi tersti — kırmızının sırasında sarı taş konuyor, sarı kazanınca kırmızı kazandı yazıyordu | **Boşluk kazara değil yapısaldır:** planlayıcıya kriterleri "`node:assert` ile test edilebilir" olacak şekilde yazması söyleniyor, bu da sunumla ilgili hiçbir şeyin kriter olamayacağını garantiliyor; denetleyiciye de estetiği denetlememesi söyleniyor ve renk eşlemesi estetik **gibi görünüyor**. Azaltıcı yön §10.1'de: anlamsal eşlemeler `logic.js`'e taşınırsa test edilebilir hale gelir |
 | S5 | **Arayüzün önünde kimlik doğrulama yoktur** | Anahtar girildikten sonra, `localhost:8000`'e erişebilen herkes o anahtarla istek başlatabilir | Tek kullanıcılı yerel çalıştırma varsayımı (V3) gereğidir; oturum yönetimi 3 günlük kapsamda değildir (§2.2). Azaltıcı: port `127.0.0.1`'e bağlıdır, yerel ağa açık değildir; anahtar bellekte durur ve konteyner durdurulunca kaybolur; arayüzde açık **"anahtarları temizle"** eylemi vardır |
 
 **Katman sayısı bilinçlidir.** Yukarıdaki sınırların hiçbiri tek başına savunmayı çökertmez: bir saldırının hedefe ulaşması için statik denetimi, ayrıcalık düşürmeyi, kaynak limitlerini, yol kısıtını ve konteyner sınırını **arka arkaya** aşması gerekir. Tasarım hedefi kusursuz izolasyon değil, **her katmanın bağımsız ve test edilebilir olmasıdır.**
@@ -519,6 +527,20 @@ Maliyet `MAX_MALIYET_USD` tavanını beslediği için hesap **yukarı yuvarlanı
 | Denetleyici ayrıştırma | Bozuk JSON, serbest metin, çelişkili karar senaryoları |
 | Uçtan uca | `replay_provider` ile kayıtlı senaryolar — deterministik |
 
+### 10.1 Test edilebilirlik sınırı — anlamsal eşlemeler nereye ait
+
+`logic.js` test edilir, `game.html` edilmez. Bu ayrım "mantık / sunum" diye kurulmuştu ama **yanlış yerden geçiyordu**: bir işaretin hangi oyuncuyu, rengi veya etiketi temsil ettiği **sunum değil anlamdır**, ve sunum tarafında kaldığı sürece hiçbir şey onu doğrulamaz (bkz. bilinen sınır S6).
+
+Doğru sınır şudur:
+
+| Kategori | Nereye ait | Test edilebilir mi |
+|---|---|---|
+| Kural, durum, kazanma koşulu | `logic.js` | ✔ |
+| **İşaret → oyuncu/renk/etiket eşlemesi** | **`logic.js`** (dışa aktarılan sabit) | ✔ |
+| Çizim, ölçü, animasyon, renk **tonu** | `game.html` | ✖ — kabul edilen sınır |
+
+Somut sonuç: `logic.js` bir eşleme dışa aktarırsa (`OYUNCULAR = { K: {ad: 'Kırmızı', renk: '#f44336'} }`) hem `game.html` oradan okur hem de eşlemenin doğruluğu `node --test` ile sınanabilir. Eşleme `game.html` içinde bir sabit olarak durduğu sürece ters yazılması hiçbir kapıdan geçmez.
+
 **Kural:** Hiçbir otomatik test gerçek API çağrısı yapmaz. Gerçek sağlayıcılar yalnızca elle çalıştırılan senaryolarla ve demo sırasında devrededir.
 
 ---
@@ -556,6 +578,7 @@ Bir teslim, aşağıdakilerin tamamı sağlandığında bitmiş sayılır:
 |---|---|---|
 | 1.0 | 14.08.2026 | İlk sürüm — kapsam, mimari, durum makinesi, şemalar, güvenlik politikası |
 | 1.1 | 14.08.2026 | **Eğitmen makinesinde dockerize çalışma şartı eklendi (K5).** §3.3 dağıtım mimarisi, iki kademeli sandbox modu, anahtarsız `replay` başlangıcı ve imaj kısıtları eklendi. §6'ya Docker soketi bağlama takası (S1) ve yedek mod izolasyon zaafı (S2) bilinen sınır olarak yazıldı. §2.3 V1 ve §12 tamamlanma ölçütü güncellendi |
+| 2.1 | 15.08.2026 | **Faz 5 + sunum katmanı boşluğu.** Sohbet kutusu, **SSE ile canlı transkript**, oyun oynatıcı ve ayarlar paneli. `/api/gorev/akis` ucu eklendi. **Bilinen sınır S6 ve §10.1** yazıldı: `game.html` hiçbir kapıdan geçmiyor ve bu boşluk yapısal — insan testi connect-4'te ters renk eşlemesi buldu, 352 otomatik test bulamazdı. `Usage.fiyat_bilinen` eklendi; fiyatı bilinmeyen model kullanıldığında transkripte `maliyet_ust_sinir` sistem mesajı yazılıyor. **Yalnızca OpenAI ile koşu:** snake `KABUL_EDILDI`, tek tur, kodda sıfır değişiklik. `docker-compose.yml`'ye rol bazlı `MODEL_*` ve `LLM_PROVIDER_*` geçişleri eklendi |
 | 2.0 | 15.08.2026 | **Faz 4 — sistem ilk kez uçtan uca çalıştı.** Gerçek stdio MCP sunucusu (`fs_mcp_server.py` + `mcp_client.py`), üç agent, `orchestrator/loop.py`, `orchestrator/runner.py`, `/api/gorev` uçları. **Üç gerçek koşu:** tic-tac-toe `KABUL_EDILDI` ($0.221, 12 test), connect-4 `KABUL_EDILDI` ($0.179, 9 test), satranç `KAPSAM_DISI` ($0.012, 24 özel durum sayarak). §5'e ölçülen maliyet ve token değerleri yazıldı. 352 test yeşil |
 | 1.9 | 14.08.2026 | **Faz 3 — sağlayıcı katmanı.** `provider.py` (sözleşme + istek parmak izi), `pricing.py`, `factory.py` (rol bazlı çözümleme), Anthropic (SDK: akış + prompt önbelleği + uyarlanabilir düşünme), OpenAI (REST), Ollama, `replay_provider` (kayıt/oynatma). §8.1'e rol bazlı karar sırası, §8.3'e kaset kararları, **§8.4 (SDK vs REST gerekçesi)** ve **§8.5 (maliyet yukarı yuvarlanır)** eklendi. `openai` SDK'sı bağımlılıklardan çıkarıldı — imaj 464 → 438 MB. Anahtar uçları (`/api/anahtarlar`) bağlandı; `sistem` rolünün anahtar alamayacağı kasa katmanında zorlandı. 315 test yeşil |
 | 1.8 | 14.08.2026 | **U4 daraltıldı + oyun kütüphanesi.** U4 ölçütü "harici varlık" değil **"harici varlık dosyası"** olarak yeniden yazıldı: kodla üretilen görsel (canvas) ve ses (Web Audio osilatörü) kapsam içidir. Bu ayrım olmadan flappy bird gibi kapsam içi olması gereken oyunlar yalnızca tıklama sesi yüzünden reddedilirdi. §2.1'e oyun kütüphanesi eklendi: her görev kendi dizininde kalır, üretilen oyunlar listelenir ve aralarında geçiş yapılır; liste ayrı bir indeksten değil transkriptlerden türetilir. §6'ya **T2c (tarayıcıda çalışan üretilmiş kod)** eklendi — süreç sandbox'ı tarayıcıyı kapsamaz, kısıt CSP ve iframe sandbox'ı ile kurulur. 264 test yeşil |

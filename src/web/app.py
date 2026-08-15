@@ -7,13 +7,15 @@ başlatma) Faz 5'te eklenecek.
 
 from __future__ import annotations
 
+import json
 import platform
 import shutil
 import subprocess
+import time
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -140,6 +142,57 @@ def task_status() -> dict[str, object]:
     if job is None:
         return {"durum": "bos"}
     return job.as_dict()
+
+
+@app.get("/api/gorev/akis")
+def task_stream() -> StreamingResponse:
+    """Canlı transkript — Server-Sent Events.
+
+    Koşu ayrı bir iş parçacığında yürüyor ve mesajları bir listeye
+    biriktiriyor. Akış o listeyi izler ve yeni gelenleri iletir. Kuyruk
+    yerine liste kullanılması bilinçli: birden fazla izleyici aynı akışı
+    baştan alabilir ve geç bağlanan bir tarayıcı ilk turları kaçırmaz.
+    """
+
+    def events():
+        gonderilen = 0
+        bekleme = 0.0
+        while True:
+            job = task_runner.job
+            if job is None:
+                yield _sse("durum", {"durum": "bos"})
+                return
+
+            while gonderilen < len(job.mesajlar):
+                yield _sse("mesaj", job.mesajlar[gonderilen])
+                gonderilen += 1
+                bekleme = 0.0
+
+            if job.durum != "calisiyor":
+                yield _sse("bitti", {
+                    "durum": job.durum,
+                    "son_durum": job.son_durum,
+                    "gorev_id": job.gorev_id,
+                    "rapor": job.rapor,
+                    "hata": job.hata,
+                })
+                return
+
+            time.sleep(0.4)
+            bekleme += 0.4
+            if bekleme >= 15:  # ara bağlantıların akışı kapatmasını önler
+                yield _sse("ping", {})
+                bekleme = 0.0
+
+    return StreamingResponse(
+        events(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"},
+    )
+
+
+def _sse(event: str, data: dict) -> str:
+    return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
 
 
 class KeyInput(BaseModel):

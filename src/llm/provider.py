@@ -87,6 +87,10 @@ class Usage:
     onbellek_yazma: int = 0
     onbellek_okuma: int = 0
     maliyet_usd: Decimal = Decimal("0")
+    # Fiyat bilinmiyorsa maliyet en pahalı bilinen tarifeden hesaplanır:
+    # tavan için doğru, ama gerçek maliyetin ÜST SINIRIDIR. Transkriptte
+    # kesin bir rakammış gibi sunulmamalı.
+    fiyat_bilinen: bool = True
 
     @property
     def toplam_token(self) -> int:
@@ -99,6 +103,7 @@ class Usage:
             "onbellek_yazma": self.onbellek_yazma,
             "onbellek_okuma": self.onbellek_okuma,
             "maliyet_usd": str(self.maliyet_usd),
+            "fiyat_bilinen": self.fiyat_bilinen,
         }
 
     @classmethod
@@ -109,6 +114,7 @@ class Usage:
             onbellek_yazma=int(data.get("onbellek_yazma") or 0),
             onbellek_okuma=int(data.get("onbellek_okuma") or 0),
             maliyet_usd=Decimal(str(data.get("maliyet_usd") or "0")),
+            fiyat_bilinen=bool(data.get("fiyat_bilinen", True)),
         )
 
     @classmethod
@@ -120,6 +126,7 @@ class Usage:
         onbellek_yazma: int = 0,
         onbellek_okuma: int = 0,
     ) -> "Usage":
+        _, bilinen = pricing.price_for(model)
         return cls(
             token_girdi=token_girdi,
             token_cikti=token_cikti,
@@ -128,6 +135,7 @@ class Usage:
             maliyet_usd=pricing.estimate_cost(
                 model, token_girdi, token_cikti, onbellek_yazma, onbellek_okuma
             ),
+            fiyat_bilinen=bilinen,
         )
 
 

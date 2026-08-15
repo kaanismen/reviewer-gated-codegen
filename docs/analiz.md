@@ -259,6 +259,7 @@ Sabit bir oyun listesi, "başa çıkabileceğimiz karmaşıklık" için **kötü
 | R4 | Statik denetim gizlenmiş kodla atlatılır | Ağ erişimi mümkün olur | Bilinçli sınır (S2): atlatılsa dahi ayrıcalık düşürme, rlimit ve konteyner sınırı devrede | ⚠️ Kabul edildi |
 | R5 | Arayüzde kimlik doğrulama yok | `localhost:8000`'e erişen anahtarı kullanabilir | Bilinçli sınır (S5): port `127.0.0.1`'e bağlı, anahtar bellekte, açık temizleme eylemi | ⚠️ Kabul edildi |
 | R6 | Geç gelen gereksinim kapsamı bozar | Revizyon maliyeti | Üç açık soru 14.08'de kapatıldı; kalan gereksinim beklenmiyor | ✅ Kapatıldı |
+| R7 | **Mantık doğru olduğu hâlde oyun kullanıcıya yanlış görünür** | Sistem "kabul edildi" der, kullanıcı bozuk bir oyun oynar | Sunum katmanı hiçbir kapıdan geçmiyor (bilinen sınır S6). Azaltıcı yön: anlamsal eşlemelerin `logic.js`'e taşınması (§10.1) | ⚠️ **Gerçekleşti** — 15.08 connect-4 renk eşlemesi. İnsan testi buldu, 352 otomatik test bulamadı |
 
 ---
 
@@ -318,6 +319,7 @@ Her kabul kriterinin bir teste karşılığı vardır. Boş kalan satırlar **he
 | A2 | ~~Oyun başına gerçek token ve maliyet~~ | ✅ Ölçüldü: $0.179–0.221, ~13.700 token |
 | A3 | ~~"Satranç LLM için çok zor" iddiası~~ | ✅ Kanıtlandı: sistem 24 özel durum sayarak reddetti |
 | A4 | Kural kartı MCP aracı | Kapsam dışı bırakıldı — filesystem MCP sunucusu şartı zaten karşılıyor |
+| A5 | **Sunum katmanı boşluğu (S6/R7) prompt'larla kapatılsın mı?** | Kural K4 gereği prompt değişikliği insana ait. İki aday: (1) planlayıcı prompt'una "işaret→oyuncu/renk eşlemesi `logic.js`'te dışa aktarılmalı ve test edilmeli" kuralı; (2) denetleyici prompt'una "sunumun mantıkla **anlamsal** tutarlılığı denetlenir; estetik denetlenmez" ayrımı. Karar insanda |
 
 ---
 

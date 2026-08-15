@@ -26,6 +26,7 @@ from src.agents.implementer import ImplementerAgent, ImplementerWire
 from src.agents.planner import PlannerAgent
 from src.agents.reviewer import ReviewerAgent, with_measured_tests
 from src.llm import factory
+from src.llm.pricing import price_for
 from src.llm.provider import ProviderError
 from src.orchestrator.limits import LIMITS, BudgetTracker, Limits
 from src.orchestrator.state_machine import (
@@ -164,6 +165,18 @@ class Orchestrator:
     ) -> None:
         machine.fire(Event.TASK_RECEIVED)
         self._system(transcript, 1, "gorev_alindi", gorev_metni[:200])
+
+        # Fiyatı bilinmeyen model varsa maliyet rakamı bir ÜST SINIRDIR.
+        # Transkript kesin bir rakammış gibi sunmamalı.
+        bilinmeyen = [
+            c.model for c in configs.values() if not price_for(c.model)[1]
+        ]
+        if bilinmeyen:
+            self._system(
+                transcript, 1, "maliyet_ust_sinir",
+                "Şu modellerin fiyatı bilinmiyor, maliyet en pahalı bilinen "
+                f"tarifeden hesaplandı (üst sınır): {', '.join(sorted(set(bilinmeyen)))}",
+            )
 
         planner = PlannerAgent(
             self._provider(Role.PLANLAYICI, configs[Role.PLANLAYICI]),

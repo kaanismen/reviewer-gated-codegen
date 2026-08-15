@@ -27,6 +27,14 @@ services:
       MAX_MALIYET_USD: ${MAX_MALIYET_USD:-}
       MAX_TOKEN_TOPLAM: ${MAX_TOKEN_TOPLAM:-}
       MAX_SURE_SN: ${MAX_SURE_SN:-}
+      # Rol bazlı sağlayıcı ve model geçersiz kılma (PROJECT.md §8.1).
+      # Genel LLM_PROVIDER yukarıda; bunlar rol bazında onu ezer.
+      LLM_PROVIDER_PLANLAYICI: ${LLM_PROVIDER_PLANLAYICI:-}
+      LLM_PROVIDER_UYGULAYICI: ${LLM_PROVIDER_UYGULAYICI:-}
+      LLM_PROVIDER_DENETLEYICI: ${LLM_PROVIDER_DENETLEYICI:-}
+      MODEL_PLANLAYICI: ${MODEL_PLANLAYICI:-}
+      MODEL_UYGULAYICI: ${MODEL_UYGULAYICI:-}
+      MODEL_DENETLEYICI: ${MODEL_DENETLEYICI:-}
       # Gerçek çağrılar kasede yazılsın mı (tests/cassettes/)
       LLM_KAYIT: ${LLM_KAYIT:-}
     volumes:

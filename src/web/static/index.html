@@ -6,72 +6,73 @@
 <title>Agent Oyun Atölyesi</title>
 <style>
   :root {
-    --bg: #0f1115; --panel: #171a21; --line: #262b36;
-    --fg: #e6e9ef; --muted: #8b93a7;
-    --ok: #4ade80; --warn: #fbbf24; --err: #f87171;
+    --bg:#0f1115; --panel:#171a21; --line:#262b36; --fg:#e6e9ef; --muted:#8b93a7;
+    --ok:#4ade80; --warn:#fbbf24; --err:#f87171; --accent:#60a5fa;
   }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0; background: var(--bg); color: var(--fg);
-    font: 15px/1.6 ui-sans-serif, "Segoe UI", system-ui, sans-serif;
-  }
-  .wrap { max-width: 880px; margin: 0 auto; padding: 40px 20px 64px; }
-  h1 { font-size: 24px; margin: 0 0 4px; letter-spacing: -0.02em; }
-  .sub { color: var(--muted); margin: 0 0 32px; }
-  .panel {
-    background: var(--panel); border: 1px solid var(--line);
-    border-radius: 10px; padding: 20px 22px; margin-bottom: 18px;
-  }
-  .panel h2 {
-    font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em;
-    color: var(--muted); margin: 0 0 14px; font-weight: 600;
-  }
-  .row {
-    display: flex; align-items: baseline; gap: 12px;
-    padding: 7px 0; border-bottom: 1px solid var(--line);
-  }
-  .row:last-child { border-bottom: 0; }
-  .row .k { flex: 0 0 220px; color: var(--muted); }
-  .row .v { flex: 1; font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: 13px; }
-  .dot { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
-  .ok .dot { background: var(--ok); } .warn .dot { background: var(--warn); } .err .dot { background: var(--err); }
-  .note { color: var(--muted); font-size: 13px; margin-top: 14px; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 6px 18px; }
-  .grid div { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; padding: 3px 0; }
-  .grid span:first-child { color: var(--muted); }
-  .grid span:last-child { font-family: ui-monospace, Consolas, monospace; }
-  .phase { color: var(--muted); font-size: 13px; }
-  .phase b { color: var(--fg); font-weight: 600; }
-  .game {
-    display: flex; align-items: center; gap: 12px;
-    padding: 9px 0; border-bottom: 1px solid var(--line);
-  }
-  .game:last-child { border-bottom: 0; }
-  .game .name { flex: 1; font-weight: 600; }
-  .game .meta { color: var(--muted); font-size: 12px; font-family: ui-monospace, Consolas, monospace; }
-  .game button {
-    background: #23304a; color: var(--fg); border: 1px solid #33507e;
-    border-radius: 6px; padding: 5px 12px; font: inherit; font-size: 13px; cursor: pointer;
-  }
-  .game button:disabled { opacity: .35; cursor: default; }
-  .badge {
-    font-size: 11px; padding: 2px 8px; border-radius: 20px;
-    border: 1px solid var(--line); color: var(--muted);
-  }
-  .badge.ok { color: var(--ok); border-color: #245c3a; }
-  .badge.warn { color: var(--warn); border-color: #6b5310; }
-  iframe {
-    width: 100%; height: 460px; border: 1px solid var(--line);
-    border-radius: 8px; background: #fff;
-  }
-  form { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
-  select, input, form button {
-    background: #11151d; color: var(--fg); border: 1px solid var(--line);
-    border-radius: 6px; padding: 7px 10px; font: inherit; font-size: 13px;
-  }
-  input { flex: 1; min-width: 200px; font-family: ui-monospace, Consolas, monospace; }
-  form button { background: #23304a; border-color: #33507e; cursor: pointer; }
-  #keyClear { background: transparent; color: var(--muted); }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg);
+         font:15px/1.6 ui-sans-serif,"Segoe UI",system-ui,sans-serif; }
+  .wrap { max-width:960px; margin:0 auto; padding:36px 20px 72px; }
+  h1 { font-size:24px; margin:0 0 4px; letter-spacing:-.02em; }
+  .sub { color:var(--muted); margin:0 0 28px; }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:10px;
+           padding:20px 22px; margin-bottom:18px; }
+  .panel h2 { font-size:12px; text-transform:uppercase; letter-spacing:.08em;
+              color:var(--muted); margin:0 0 14px; font-weight:600; }
+  .row { display:flex; align-items:baseline; gap:12px; padding:7px 0;
+         border-bottom:1px solid var(--line); }
+  .row:last-child { border-bottom:0; }
+  .row .k { flex:0 0 200px; color:var(--muted); }
+  .row .v { flex:1; font-family:ui-monospace,Consolas,monospace; font-size:13px; }
+  .dot { flex:0 0 auto; width:8px; height:8px; border-radius:50%; background:var(--muted); }
+  .ok .dot{background:var(--ok)} .warn .dot{background:var(--warn)} .err .dot{background:var(--err)}
+  .note { color:var(--muted); font-size:13px; margin-top:12px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:4px 18px; }
+  .grid div { display:flex; justify-content:space-between; gap:10px; font-size:13px; padding:2px 0; }
+  .grid span:first-child { color:var(--muted); }
+  .grid span:last-child { font-family:ui-monospace,Consolas,monospace; }
+
+  form { display:flex; gap:8px; flex-wrap:wrap; }
+  select, input, textarea, button {
+    background:#11151d; color:var(--fg); border:1px solid var(--line);
+    border-radius:6px; padding:8px 11px; font:inherit; font-size:14px; }
+  textarea { flex:1; min-width:260px; resize:vertical; min-height:44px; }
+  input { flex:1; min-width:200px; font-family:ui-monospace,Consolas,monospace; font-size:13px; }
+  button { background:#23304a; border-color:#33507e; cursor:pointer; }
+  button:disabled { opacity:.4; cursor:default; }
+  button.ghost { background:transparent; color:var(--muted); }
+
+  .msg { border-left:2px solid var(--line); padding:10px 0 10px 14px; margin-bottom:6px; }
+  .msg.planlayici { border-color:#a78bfa; }
+  .msg.uygulayici { border-color:#60a5fa; }
+  .msg.denetleyici{ border-color:#fbbf24; }
+  .msg.sistem { border-color:var(--line); }
+  .msg-head { display:flex; gap:10px; align-items:baseline; flex-wrap:wrap; font-size:12px; }
+  .msg-rol { font-weight:700; letter-spacing:.02em; }
+  .msg-meta { color:var(--muted); font-family:ui-monospace,Consolas,monospace; }
+  .msg-body { margin-top:6px; font-size:13.5px; }
+  .msg-body ul { margin:4px 0; padding-left:18px; }
+  .verdict { font-weight:700; padding:1px 8px; border-radius:20px; font-size:11px; }
+  .verdict.KABUL { color:var(--ok); border:1px solid #245c3a; }
+  .verdict.RED   { color:var(--err); border:1px solid #6b2626; }
+  details.raw summary { cursor:pointer; color:var(--muted); font-size:12px; margin-top:6px; }
+  details.raw pre { background:#11151d; border:1px solid var(--line); border-radius:6px;
+    padding:10px; overflow:auto; font-size:12px; max-height:280px; }
+
+  .game { display:flex; align-items:center; gap:12px; padding:9px 0; border-bottom:1px solid var(--line); }
+  .game:last-child { border-bottom:0; }
+  .game .name { flex:1; font-weight:600; }
+  .game .meta { color:var(--muted); font-size:12px; font-family:ui-monospace,Consolas,monospace; }
+  .badge { font-size:11px; padding:2px 8px; border-radius:20px; border:1px solid var(--line); color:var(--muted); }
+  .badge.ok { color:var(--ok); border-color:#245c3a; }
+  .badge.warn { color:var(--warn); border-color:#6b5310; }
+  iframe { width:100%; height:520px; border:1px solid var(--line); border-radius:8px; background:#fff; }
+  details.settings summary { cursor:pointer; color:var(--muted); font-size:12px;
+    text-transform:uppercase; letter-spacing:.08em; font-weight:600; }
+  details.settings[open] summary { margin-bottom:14px; }
+  .spinner { display:inline-block; width:10px; height:10px; border:2px solid var(--accent);
+    border-right-color:transparent; border-radius:50%; animation:spin .7s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
 </style>
 </head>
 <body>
@@ -80,42 +81,21 @@
   <p class="sub">Planlayıcı → Uygulayıcı → Denetleyici · prompt'tan oynanabilir oyuna</p>
 
   <div class="panel">
-    <h2>Kurulum denetimi</h2>
-    <div id="checks"><div class="row"><span class="dot"></span><span class="v">Yükleniyor…</span></div></div>
-    <p class="note" id="providerNote"></p>
-  </div>
-
-  <div class="panel">
-    <h2>Agent sağlayıcıları</h2>
-    <div id="roles"></div>
-    <form id="keyForm" autocomplete="off">
-      <select id="keyRole" aria-label="Rol">
-        <option value="planlayici">planlayıcı</option>
-        <option value="uygulayici">uygulayıcı</option>
-        <option value="denetleyici">denetleyici</option>
-      </select>
-      <select id="keyProvider" aria-label="Sağlayıcı">
-        <option value="anthropic">anthropic</option>
-        <option value="openai">openai</option>
-      </select>
-      <input id="keyValue" type="password" placeholder="API anahtarı"
-             autocomplete="off" spellcheck="false">
-      <button type="submit">kaydet</button>
-      <button type="button" id="keyClear">temizle</button>
+    <h2>Görev</h2>
+    <form id="taskForm">
+      <textarea id="taskText" placeholder="snake oyunu yaz, yılan yem yiyince uzasın"
+                maxlength="2000"></textarea>
+      <button type="submit" id="taskGo">üret</button>
     </form>
-    <p class="note" id="keyNote">Anahtar yalnızca bellekte tutulur, diske
-      yazılmaz ve konteyner durunca kaybolur. Girmezseniz sistem kayıtlı
-      senaryoları oynatır.</p>
+    <p class="note" id="taskNote">Ölçütü geçen her oyun üretilebilir — tic-tac-toe,
+      connect-4, snake, pong, 2048… Kural karmaşıklığı fazla olanlar (satranç)
+      gerekçeyle reddedilir.</p>
   </div>
 
-  <div class="panel">
-    <h2>Etkin limitler</h2>
-    <div class="grid" id="limits"></div>
-  </div>
-
-  <div class="panel">
-    <h2>Üretilen oyunlar</h2>
-    <div id="library"><p class="note">Yükleniyor…</p></div>
+  <div class="panel" id="transcriptPanel" hidden>
+    <h2>Canlı transkript</h2>
+    <div id="transcript"></div>
+    <p class="note" id="runSummary"></p>
   </div>
 
   <div class="panel" id="playerPanel" hidden>
@@ -126,87 +106,79 @@
   </div>
 
   <div class="panel">
-    <h2>Durum</h2>
-    <p class="phase"><b>Faz 2 tamamlandı.</b> Sandbox, güvenlik katmanları ve
-    oyun kütüphanesi hazır. Sohbet kutusu ve canlı transkript Faz 5'te
-    eklenecek.</p>
+    <h2>Üretilen oyunlar</h2>
+    <div id="library"><p class="note">Yükleniyor…</p></div>
+  </div>
+
+  <div class="panel">
+    <details class="settings">
+      <summary>Ayarlar ve kurulum denetimi</summary>
+
+      <h2 style="margin-top:18px">Agent sağlayıcıları</h2>
+      <div id="roles"></div>
+      <form id="keyForm" autocomplete="off" style="margin-top:14px">
+        <select id="keyRole" aria-label="Rol">
+          <option value="planlayici">planlayıcı</option>
+          <option value="uygulayici">uygulayıcı</option>
+          <option value="denetleyici">denetleyici</option>
+        </select>
+        <select id="keyProvider" aria-label="Sağlayıcı">
+          <option value="anthropic">anthropic</option>
+          <option value="openai">openai</option>
+        </select>
+        <input id="keyValue" type="password" placeholder="API anahtarı"
+               autocomplete="off" spellcheck="false">
+        <button type="submit">kaydet</button>
+        <button type="button" class="ghost" id="keyClear">temizle</button>
+      </form>
+      <p class="note" id="keyNote"></p>
+
+      <h2 style="margin-top:22px">Kurulum denetimi</h2>
+      <div id="checks"></div>
+
+      <h2 style="margin-top:22px">Etkin limitler</h2>
+      <div class="grid" id="limits"></div>
+    </details>
   </div>
 </div>
 
 <script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c =>
+  ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c]));
+
+// ---------------------------------------------------------------- sağlık
 const rowHTML = (state, key, value) =>
-  `<div class="row ${state}"><span class="dot"></span><span class="k">${key}</span><span class="v">${value}</span></div>`;
+  `<div class="row ${state}"><span class="dot"></span><span class="k">${key}</span><span class="v">${esc(value)}</span></div>`;
 
-fetch("/api/health").then(r => r.json()).then(h => {
-  const rows = [
-    ["ok", "Web sunucusu", h.durum],
-    ["ok", "Python", h.python],
-    [h.node ? "ok" : "err", "Node (node --test)", h.node || "BULUNAMADI"],
-    [h.konteyner ? "ok" : "warn", "Çalışma ortamı", h.konteyner ? "konteyner" : "host (geliştirme)"],
-    [h.runner_kullanicisi ? "ok" : "warn", "runner kullanıcısı", h.runner_kullanicisi ? "var" : "yok — sandbox ayrıcalık düşüremez"],
-    [h.workspaces_yazilabilir ? "ok" : "err", "workspaces dizini", h.workspaces],
-    [h.cevrimdisi_mod ? "warn" : "ok", "LLM sağlayıcısı", h.saglayici],
-  ];
-  document.getElementById("checks").innerHTML = rows.map(r => rowHTML(...r)).join("");
-  document.getElementById("providerNote").textContent = h.saglayici_gerekce;
-  document.getElementById("limits").innerHTML = Object.entries(h.limitler)
-    .map(([k, v]) => `<div><span>${k}</span><span>${v}</span></div>`).join("");
-}).catch(e => {
-  document.getElementById("checks").innerHTML = rowHTML("err", "Sağlık ucu", String(e));
-});
-
-// --- Agent sağlayıcıları -------------------------------------------------
-// Anahtar hiçbir yerde saklanmaz: localStorage/sessionStorage kullanılmaz,
-// gönderildikten sonra alan temizlenir. Sunucu da yalnızca maskeli parmak
-// izi döndürür.
-function rolleriYenile() {
+function saglikYenile() {
   return fetch("/api/health").then(r => r.json()).then(h => {
+    $("checks").innerHTML = [
+      ["ok", "Python", h.python],
+      [h.node ? "ok" : "err", "Node", h.node || "BULUNAMADI"],
+      [h.konteyner ? "ok" : "warn", "Ortam", h.konteyner ? "konteyner" : "host"],
+      [h.runner_kullanicisi ? "ok" : "warn", "runner kullanıcısı", h.runner_kullanicisi ? "var" : "yok"],
+      [h.workspaces_yazilabilir ? "ok" : "err", "workspaces", h.workspaces],
+    ].map(r => rowHTML(...r)).join("");
+
+    $("limits").innerHTML = Object.entries(h.limitler)
+      .map(([k, v]) => `<div><span>${k}</span><span>${esc(v)}</span></div>`).join("");
+
     const anahtarlar = Object.fromEntries(h.anahtarlar.map(a => [a.rol, a.maske]));
-    document.getElementById("roles").innerHTML = h.roller.map(r => {
+    $("roles").innerHTML = h.roller.map(r => {
       const maske = anahtarlar[r.rol];
       const cevrimdisi = r.saglayici === "replay";
-      return `<div class="row ${cevrimdisi ? "warn" : "ok"}">
-        <span class="dot"></span>
-        <span class="k">${r.rol}</span>
-        <span class="v">${r.saglayici} · ${r.model}${maske ? " · " + maske : ""}</span>
-      </div>`;
+      return rowHTML(cevrimdisi ? "warn" : "ok", r.rol,
+        `${r.saglayici} · ${r.model}${maske ? " · " + maske : ""}`);
     }).join("");
-    const ek = h.kayit_modu ? " · KAYIT MODU açık" : "";
-    document.getElementById("keyNote").textContent =
-      `${h.kaset_sayisi} kayıtlı senaryo${ek}. Anahtar yalnızca bellekte tutulur, ` +
-      `diske yazılmaz ve konteyner durunca kaybolur.`;
+
+    $("keyNote").textContent =
+      `${h.kaset_sayisi} kayıtlı senaryo${h.kayit_modu ? " · KAYIT MODU açık" : ""}. ` +
+      `Anahtar yalnızca bellekte tutulur, diske yazılmaz ve konteyner durunca kaybolur.`;
   });
 }
 
-document.getElementById("keyForm").addEventListener("submit", async e => {
-  e.preventDefault();
-  const alan = document.getElementById("keyValue");
-  const not = document.getElementById("keyNote");
-  try {
-    const r = await fetch("/api/anahtarlar", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        rol: document.getElementById("keyRole").value,
-        saglayici: document.getElementById("keyProvider").value,
-        anahtar: alan.value,
-      }),
-    });
-    const body = await r.json();
-    if (!r.ok) { not.textContent = "Reddedildi: " + (body.detail || r.status); return; }
-    alan.value = "";               // anahtar DOM'da bırakılmaz
-    await rolleriYenile();
-  } catch (err) { not.textContent = "Gönderilemedi: " + err; }
-});
-
-document.getElementById("keyClear").addEventListener("click", async () => {
-  await fetch("/api/anahtarlar", { method: "DELETE" });
-  document.getElementById("keyValue").value = "";
-  await rolleriYenile();
-});
-
-rolleriYenile();
-
+// ---------------------------------------------------------------- kütüphane
 const DURUM_ETIKET = {
   KABUL_EDILDI: ["ok", "kabul edildi"],
   KAPSAM_DISI:  ["warn", "kapsam dışı"],
@@ -215,37 +187,150 @@ const DURUM_ETIKET = {
 };
 
 function oyunOynat(id, ad) {
-  document.getElementById("playerPanel").hidden = false;
-  document.getElementById("playerTitle").textContent = ad;
-  // Kaynak her seçimde yeniden atanır; tarayıcı önbelleğe almasın diye
-  // sunucu no-store gönderiyor.
-  document.getElementById("player").src = `/oyun/${encodeURIComponent(id)}/game.html`;
-  document.getElementById("playerPanel").scrollIntoView({ behavior: "smooth" });
+  $("playerPanel").hidden = false;
+  $("playerTitle").textContent = ad;
+  $("player").src = `/oyun/${encodeURIComponent(id)}/game.html`;
+  $("playerPanel").scrollIntoView({ behavior: "smooth" });
 }
 
-fetch("/api/oyunlar").then(r => r.json()).then(d => {
-  const kutu = document.getElementById("library");
-  if (!d.toplam) {
-    kutu.innerHTML = `<p class="note">Henüz oyun üretilmedi. Faz 4'te ilk oyun
-      üretildiğinde burada listelenecek ve aralarında geçiş yapılabilecek.</p>`;
-    return;
+function kutuphaneYenile() {
+  return fetch("/api/oyunlar").then(r => r.json()).then(d => {
+    if (!d.toplam) {
+      $("library").innerHTML = `<p class="note">Henüz oyun üretilmedi.</p>`;
+      return;
+    }
+    $("library").innerHTML = d.oyunlar.map(o => {
+      const [sinif, etiket] = DURUM_ETIKET[o.son_durum] || ["", o.son_durum || "—"];
+      return `<div class="game">
+        <span class="name">${esc(o.oyun)}</span>
+        <span class="badge ${sinif}">${etiket}</span>
+        <span class="meta">${o.tur} tur · $${esc(o.maliyet_usd)}</span>
+        <button ${o.oynanabilir ? "" : "disabled"}
+                data-id="${esc(o.gorev_id)}" data-ad="${esc(o.oyun)}">oynat</button>
+      </div>`;
+    }).join("");
+    $("library").querySelectorAll("button[data-id]").forEach(b =>
+      b.addEventListener("click", () => oyunOynat(b.dataset.id, b.dataset.ad)));
+  });
+}
+
+// ---------------------------------------------------------------- transkript
+function mesajHTML(m) {
+  const i = m.icerik || {};
+  let body = "";
+
+  if (m.rol === "planlayici") {
+    const u = i.uygulanabilirlik || {};
+    if (u.karar === "UYGUN_DEGIL") {
+      body = `<b>${esc(i.oyun)}</b> — <span class="verdict RED">KAPSAM DIŞI</span>
+              <div>${esc(u.gerekce)}</div>
+              <div class="msg-meta">${u.ozel_durum_sayisi} özel durum</div>`;
+    } else {
+      body = `<b>${esc(i.oyun)}</b> · ${u.ozel_durum_sayisi} özel durum
+              <ul>${(i.kabul_kriterleri || []).map(k => `<li>${esc(k)}</li>`).join("")}</ul>`;
+    }
+  } else if (m.rol === "uygulayici") {
+    body = `<ul>${(i.yazilan_dosyalar || []).map(d =>
+      `<li>${esc(d.yol)} · ${d.bayt} bayt</li>`).join("")}</ul>
+      <div class="msg-meta">${(i.arac_cagrilari || []).length} MCP çağrısı</div>
+      ${i.not ? `<div>${esc(i.not)}</div>` : ""}`;
+  } else if (m.rol === "denetleyici") {
+    const t = i.test_sonucu || {};
+    body = `<span class="verdict ${esc(i.karar)}">${esc(i.karar)}</span>
+            <span class="msg-meta">geçen ${t.gecen} · kalan ${t.kalan}</span>
+            <div>${esc(i.gerekce)}</div>
+            ${(i.bulgular || []).length ? `<ul>${i.bulgular.map(b =>
+              `<li>[${esc(b.onem)}] ${esc(b.dosya)}: ${esc(b.sorun)}</li>`).join("")}</ul>` : ""}`;
+  } else {
+    body = `<span class="msg-meta">${esc(i.olay)}</span> ${esc(i.ayrinti || "")}`;
   }
-  kutu.innerHTML = d.oyunlar.map(o => {
-    const [sinif, etiket] = DURUM_ETIKET[o.son_durum] || ["", o.son_durum || "—"];
-    return `<div class="game">
-      <span class="name">${o.oyun}</span>
-      <span class="badge ${sinif}">${etiket}</span>
-      <span class="meta">${o.tur} tur · $${o.maliyet_usd}</span>
-      <button ${o.oynanabilir ? "" : "disabled"}
-              data-id="${o.gorev_id}" data-ad="${o.oyun}">oynat</button>
-    </div>`;
-  }).join("");
-  kutu.querySelectorAll("button[data-id]").forEach(b =>
-    b.addEventListener("click", () => oyunOynat(b.dataset.id, b.dataset.ad)));
-}).catch(e => {
-  document.getElementById("library").innerHTML =
-    `<p class="note">Kütüphane okunamadı: ${e}</p>`;
+
+  const maliyet = Number(m.maliyet_usd || 0);
+  const meta = m.rol === "sistem" ? "" :
+    `${esc(m.prompt_surumu)} · ${esc(m.model)} · ${m.token_girdi}→${m.token_cikti} tok · $${maliyet.toFixed(5)}`;
+
+  return `<div class="msg ${esc(m.rol)}">
+    <div class="msg-head"><span class="msg-rol">${esc(m.rol)}</span>
+      <span class="msg-meta">tur ${m.tur}</span>
+      <span class="msg-meta">${meta}</span></div>
+    <div class="msg-body">${body}</div>
+  </div>`;
+}
+
+function gorevBaslat(gorev) {
+  $("transcriptPanel").hidden = false;
+  $("transcript").innerHTML = "";
+  $("runSummary").innerHTML = `<span class="spinner"></span> çalışıyor…`;
+  $("taskGo").disabled = true;
+
+  const kaynak = new EventSource("/api/gorev/akis");
+  let toplam = 0;
+
+  kaynak.addEventListener("mesaj", e => {
+    const m = JSON.parse(e.data);
+    toplam += Number(m.maliyet_usd || 0);
+    $("transcript").insertAdjacentHTML("beforeend", mesajHTML(m));
+    $("runSummary").innerHTML =
+      `<span class="spinner"></span> çalışıyor… $${toplam.toFixed(4)}`;
+  });
+
+  kaynak.addEventListener("bitti", e => {
+    const d = JSON.parse(e.data);
+    kaynak.close();
+    $("taskGo").disabled = false;
+    const rapor = d.rapor || {};
+    $("runSummary").textContent = d.hata
+      ? `Hata: ${d.hata}`
+      : `${d.son_durum} · kural ${rapor.uygulanan_kural} · ${rapor.tur} tur · $${toplam.toFixed(4)}`;
+    kutuphaneYenile().then(() => {
+      if (d.son_durum === "KABUL_EDILDI" && d.gorev_id) oyunOynat(d.gorev_id, gorev);
+    });
+    saglikYenile();
+  });
+
+  kaynak.onerror = () => { kaynak.close(); $("taskGo").disabled = false; };
+}
+
+$("taskForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const gorev = $("taskText").value.trim();
+  if (!gorev) return;
+  try {
+    const r = await fetch("/api/gorev", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ gorev }),
+    });
+    if (!r.ok) { $("taskNote").textContent = "Reddedildi: " + ((await r.json()).detail || r.status); return; }
+    gorevBaslat(gorev);
+  } catch (err) { $("taskNote").textContent = "Gönderilemedi: " + err; }
 });
+
+// ---------------------------------------------------------------- anahtarlar
+$("keyForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const alan = $("keyValue");
+  try {
+    const r = await fetch("/api/anahtarlar", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        rol: $("keyRole").value, saglayici: $("keyProvider").value, anahtar: alan.value,
+      }),
+    });
+    const body = await r.json();
+    if (!r.ok) { $("keyNote").textContent = "Reddedildi: " + (body.detail || r.status); return; }
+    alan.value = "";                     // anahtar DOM'da bırakılmaz
+    await saglikYenile();
+  } catch (err) { $("keyNote").textContent = "Gönderilemedi: " + err; }
+});
+
+$("keyClear").addEventListener("click", async () => {
+  await fetch("/api/anahtarlar", { method: "DELETE" });
+  $("keyValue").value = "";
+  await saglikYenile();
+});
+
+saglikYenile();
+kutuphaneYenile();
 </script>
 </body>
 </html>
