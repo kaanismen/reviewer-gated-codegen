@@ -191,6 +191,38 @@ def test_secim_kaldirilinca_otomatige_doner(client):
     assert rol["model"] == "claude-opus-5"
 
 
+def test_karisik_kurulum_kosudan_once_uyarir(client):
+    """Gerçek koşuda yaşandı: anahtar yalnızca planlayıcıya girildi,
+    planlayıcı gerçek bir plan üretti, uygulayıcı replay'de kaset bulamadı
+    ve koşu ortada kaldı. Sistem bunu başlamadan önce biliyordu."""
+    client.post(
+        "/api/anahtarlar",
+        json={"rol": "planlayici", "saglayici": "anthropic", "anahtar": ANAHTAR},
+    )
+    uyari = client.get("/api/health").json()["yapilandirma_uyarisi"]
+    assert uyari
+    assert "planlayici" in uyari
+    assert "uygulayici" in uyari
+
+
+def test_tum_roller_anahtarliysa_uyari_yok(client):
+    for rol in ("planlayici", "uygulayici", "denetleyici"):
+        client.post(
+            "/api/anahtarlar",
+            json={"rol": rol, "saglayici": "anthropic", "anahtar": ANAHTAR},
+        )
+    data = client.get("/api/health").json()
+    assert data["yapilandirma_uyarisi"] == ""
+    assert data["cevrimdisi_mod"] is False
+
+
+def test_hicbir_anahtar_yoksa_uyari_yok(client):
+    """Saf replay tutarlı bir kurulumdur; uyarı gerektirmez."""
+    data = client.get("/api/health").json()
+    assert data["yapilandirma_uyarisi"] == ""
+    assert data["cevrimdisi_mod"] is True
+
+
 def test_katalog_anahtarsiz_reddedilir(client):
     r = client.get("/api/modeller?saglayici=anthropic")
     assert r.status_code == 400

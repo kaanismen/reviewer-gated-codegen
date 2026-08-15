@@ -119,6 +119,7 @@ def health() -> dict[str, object]:
         "cevrimdisi_mod": all(r.saglayici == "replay" for r in roller),
         "roller": [r.as_dict() for r in roller],
         "anahtarlar": [f.as_dict() for f in vault.fingerprints()],
+        "yapilandirma_uyarisi": _config_warning(roller),
         "kaset_sayisi": ReplayProvider(CASSETTES_DIR).count(),
         # Anahtarsız modda kullanıcı hangi görevin oynatılabilir olduğunu
         # bilmeli; bilmezse rastgele bir metin yazıp hata alır.
@@ -350,6 +351,30 @@ def serve_game_file(gorev_id: str, dosya: str) -> FileResponse:
             "Cache-Control": "no-store",
         },
     )
+
+
+def _config_warning(roller: list) -> str:
+    """Koşu başlamadan önce görülmesi gereken yapılandırma sorunu.
+
+    Karışık kurulum (bazı roller gerçek sağlayıcıda, bazıları `replay`)
+    neredeyse kesin başarısızdır: gerçek sağlayıcı özgün bir çıktı üretir,
+    replay rolü o çıktı için kaset bulamaz ve koşu ortada kalır.
+
+    Sistem bunu görev başlamadan **önce** bilir; söylememek kullanıcıyı
+    boşuna bekletir ve para harcatır.
+    """
+    replay = [r.rol.value for r in roller if r.saglayici == "replay"]
+    canli = [r.rol.value for r in roller if r.saglayici != "replay"]
+
+    if replay and canli:
+        return (
+            f"Karışık kurulum: {', '.join(canli)} gerçek sağlayıcıda, "
+            f"{', '.join(replay)} kayıtlı senaryo modunda. Bu kurulumda koşu "
+            f"büyük olasılıkla {replay[0]} adımında duracak — canlı bir agent'ın "
+            f"ürettiği özgün çıktı için kaset bulunmaz. Eksik rollere de anahtar "
+            f"girin veya anahtarları tamamen temizleyip kayıtlı senaryoları kullanın."
+        )
+    return ""
 
 
 @app.get("/")

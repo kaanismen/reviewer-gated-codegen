@@ -84,6 +84,9 @@
   .rolerow .src.yedek { color:var(--warn); }
   .hist { border:1px solid var(--line); border-radius:8px; padding:14px;
           margin-top:10px; background:#11151d; }
+  .uyari { border:1px solid #6b5310; border-left-width:3px; border-radius:6px;
+           background:#1c1808; color:var(--warn); padding:10px 14px;
+           margin-top:12px; font-size:13.5px; }
   details.settings summary { cursor:pointer; color:var(--muted); font-size:12px;
     text-transform:uppercase; letter-spacing:.08em; font-weight:600; }
   details.settings[open] summary { margin-bottom:14px; }
@@ -104,6 +107,7 @@
                 maxlength="2000"></textarea>
       <button type="submit" id="taskGo">üret</button>
     </form>
+    <div id="uyari" class="uyari" hidden></div>
     <div id="senaryolar" hidden></div>
     <p class="note" id="taskNote">Ölçütü geçen her oyun üretilebilir — tic-tac-toe,
       connect-4, snake, pong, 2048… Kural karmaşıklığı fazla olanlar (satranç)
@@ -147,6 +151,7 @@
       <p class="note" id="rolesNote"></p>
       <form id="keyForm" autocomplete="off" style="margin-top:14px">
         <select id="keyRole" aria-label="Rol">
+          <option value="hepsi">tüm roller</option>
           <option value="planlayici">planlayıcı</option>
           <option value="uygulayici">uygulayıcı</option>
           <option value="denetleyici">denetleyici</option>
@@ -200,6 +205,12 @@ function saglikYenile({ roller = true } = {}) {
       const anahtarlar = Object.fromEntries(h.anahtarlar.map(a => [a.rol, a.maske]));
       rolleriCiz(h.roller, anahtarlar);
     }
+
+    // Koşu başlamadan ÖNCE görülmesi gereken yapılandırma sorunu.
+    // Ayarlar paneli katlı olduğu için gerekçeler orada görünmüyordu.
+    const uyari = $("uyari");
+    uyari.hidden = !h.yapilandirma_uyarisi;
+    uyari.textContent = h.yapilandirma_uyarisi || "";
 
     // Anahtarsız modda hangi görevlerin oynatılabileceğini göster.
     // Bilinmezse kullanıcı rastgele bir metin yazar ve hata alır.
@@ -528,15 +539,25 @@ $("taskForm").addEventListener("submit", async e => {
 $("keyForm").addEventListener("submit", async e => {
   e.preventDefault();
   const alan = $("keyValue");
+  const secim = $("keyRole").value;
+  // Varsayılan "tüm roller": tek anahtarın tek role uygulanması, geri
+  // kalanların sessizce replay'de kalmasına ve koşunun ortada durmasına
+  // yol açıyordu.
+  const roller = secim === "hepsi"
+    ? ["planlayici", "uygulayici", "denetleyici"] : [secim];
   try {
-    const r = await fetch("/api/anahtarlar", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        rol: $("keyRole").value, saglayici: $("keyProvider").value, anahtar: alan.value,
-      }),
-    });
-    const body = await r.json();
-    if (!r.ok) { $("keyNote").textContent = "Reddedildi: " + (body.detail || r.status); return; }
+    for (const rol of roller) {
+      const r = await fetch("/api/anahtarlar", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          rol, saglayici: $("keyProvider").value, anahtar: alan.value,
+        }),
+      });
+      if (!r.ok) {
+        $("keyNote").textContent = "Reddedildi: " + ((await r.json()).detail || r.status);
+        return;
+      }
+    }
     alan.value = "";                     // anahtar DOM'da bırakılmaz
     await saglikYenile();
   } catch (err) { $("keyNote").textContent = "Gönderilemedi: " + err; }
