@@ -64,6 +64,14 @@
     width: 100%; height: 460px; border: 1px solid var(--line);
     border-radius: 8px; background: #fff;
   }
+  form { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+  select, input, form button {
+    background: #11151d; color: var(--fg); border: 1px solid var(--line);
+    border-radius: 6px; padding: 7px 10px; font: inherit; font-size: 13px;
+  }
+  input { flex: 1; min-width: 200px; font-family: ui-monospace, Consolas, monospace; }
+  form button { background: #23304a; border-color: #33507e; cursor: pointer; }
+  #keyClear { background: transparent; color: var(--muted); }
 </style>
 </head>
 <body>
@@ -75,6 +83,29 @@
     <h2>Kurulum denetimi</h2>
     <div id="checks"><div class="row"><span class="dot"></span><span class="v">Yükleniyor…</span></div></div>
     <p class="note" id="providerNote"></p>
+  </div>
+
+  <div class="panel">
+    <h2>Agent sağlayıcıları</h2>
+    <div id="roles"></div>
+    <form id="keyForm" autocomplete="off">
+      <select id="keyRole" aria-label="Rol">
+        <option value="planlayici">planlayıcı</option>
+        <option value="uygulayici">uygulayıcı</option>
+        <option value="denetleyici">denetleyici</option>
+      </select>
+      <select id="keyProvider" aria-label="Sağlayıcı">
+        <option value="anthropic">anthropic</option>
+        <option value="openai">openai</option>
+      </select>
+      <input id="keyValue" type="password" placeholder="API anahtarı"
+             autocomplete="off" spellcheck="false">
+      <button type="submit">kaydet</button>
+      <button type="button" id="keyClear">temizle</button>
+    </form>
+    <p class="note" id="keyNote">Anahtar yalnızca bellekte tutulur, diske
+      yazılmaz ve konteyner durunca kaybolur. Girmezseniz sistem kayıtlı
+      senaryoları oynatır.</p>
   </div>
 
   <div class="panel">
@@ -123,6 +154,58 @@ fetch("/api/health").then(r => r.json()).then(h => {
 }).catch(e => {
   document.getElementById("checks").innerHTML = rowHTML("err", "Sağlık ucu", String(e));
 });
+
+// --- Agent sağlayıcıları -------------------------------------------------
+// Anahtar hiçbir yerde saklanmaz: localStorage/sessionStorage kullanılmaz,
+// gönderildikten sonra alan temizlenir. Sunucu da yalnızca maskeli parmak
+// izi döndürür.
+function rolleriYenile() {
+  return fetch("/api/health").then(r => r.json()).then(h => {
+    const anahtarlar = Object.fromEntries(h.anahtarlar.map(a => [a.rol, a.maske]));
+    document.getElementById("roles").innerHTML = h.roller.map(r => {
+      const maske = anahtarlar[r.rol];
+      const cevrimdisi = r.saglayici === "replay";
+      return `<div class="row ${cevrimdisi ? "warn" : "ok"}">
+        <span class="dot"></span>
+        <span class="k">${r.rol}</span>
+        <span class="v">${r.saglayici} · ${r.model}${maske ? " · " + maske : ""}</span>
+      </div>`;
+    }).join("");
+    const ek = h.kayit_modu ? " · KAYIT MODU açık" : "";
+    document.getElementById("keyNote").textContent =
+      `${h.kaset_sayisi} kayıtlı senaryo${ek}. Anahtar yalnızca bellekte tutulur, ` +
+      `diske yazılmaz ve konteyner durunca kaybolur.`;
+  });
+}
+
+document.getElementById("keyForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const alan = document.getElementById("keyValue");
+  const not = document.getElementById("keyNote");
+  try {
+    const r = await fetch("/api/anahtarlar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        rol: document.getElementById("keyRole").value,
+        saglayici: document.getElementById("keyProvider").value,
+        anahtar: alan.value,
+      }),
+    });
+    const body = await r.json();
+    if (!r.ok) { not.textContent = "Reddedildi: " + (body.detail || r.status); return; }
+    alan.value = "";               // anahtar DOM'da bırakılmaz
+    await rolleriYenile();
+  } catch (err) { not.textContent = "Gönderilemedi: " + err; }
+});
+
+document.getElementById("keyClear").addEventListener("click", async () => {
+  await fetch("/api/anahtarlar", { method: "DELETE" });
+  document.getElementById("keyValue").value = "";
+  await rolleriYenile();
+});
+
+rolleriYenile();
 
 const DURUM_ETIKET = {
   KABUL_EDILDI: ["ok", "kabul edildi"],

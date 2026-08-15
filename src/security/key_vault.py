@@ -25,7 +25,7 @@ from dataclasses import dataclass
 
 from pydantic import SecretStr
 
-from src.transcript.models import Role
+from src.transcript.models import AGENT_ROLES, Role
 
 MASK = "[ANAHTAR GİZLENDİ]"
 
@@ -90,6 +90,12 @@ class KeyVault:
     # -- yazma --------------------------------------------------------------
 
     def set(self, rol: Role, saglayici: str, anahtar: str) -> KeyFingerprint:
+        # Yalnızca agent rollerinin sağlayıcı çağrısı vardır. `sistem` rolü
+        # durum geçişlerini kaydeder, LLM'e gitmez — ona anahtar emanet
+        # etmek, hiçbir zaman kullanılmayacak bir sırrı bellekte tutmak olurdu.
+        if rol not in AGENT_ROLES:
+            raise KeyRejected(f"'{rol.value}' bir agent rolü değil, anahtar almaz")
+
         provider = saglayici.strip().lower()
         if provider in KEYLESS_PROVIDERS:
             raise KeyRejected(f"'{provider}' sağlayıcısı API anahtarı kullanmaz")

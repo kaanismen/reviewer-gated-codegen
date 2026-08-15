@@ -6,5 +6,9 @@ pydantic==2.13.4
 httpx==0.28.1
 python-dotenv==1.2.2
 anthropic==0.122.0
-openai==3.0.0
 pytest==9.1.1
+
+# openai SDK'sı bilinçli olarak YOK: OpenAI'a yapılan tek çağrı şekli var
+# ve belgelenmiş /v1/chat/completions ucu httpx ile kullanılıyor. Tek bir
+# çağrı için büyük bir istemci bağımlılığı taşımak imaj boyutu ve sürüm
+# sürüklenmesi açısından karşılığını vermiyor (src/llm/openai_provider.py).

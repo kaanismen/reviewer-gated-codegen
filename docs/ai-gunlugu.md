@@ -518,6 +518,44 @@ Faz planına "gerçekleşen" tablosu eklenerek kalan zorunlu teslimler açıkça
 
 ---
 
+### Kayıt 3.1 — Faz 3: sağlayıcı katmanı ve kayıt/oynatma
+
+**Prompt:**
+
+> haydi geçelim
+
+**AI çıktısı — özet:**
+
+Yedi modül: `provider.py` (sözleşme + istek parmak izi), `pricing.py`, `factory.py` (rol bazlı çözümleme), Anthropic, OpenAI, Ollama ve `replay_provider`. Anahtar uçları (`/api/anahtarlar`) bağlandı, sağlık ucu rol yapılandırmasını gösteriyor, arayüze anahtar giriş paneli eklendi. **315 test.**
+
+**Karar sahibi:** AI. İnsan onayı: "haydi geçelim".
+
+**SDK bağlamaları tahmin edilmedi.** Kod yazmadan önce `claude-api` becerisinin Python referansı okundu. Doğrulanan noktalar: `messages.stream()` bağlam yöneticisi + `get_final_message()`, `cache_control` için sistem promptunun **liste biçiminde** verilmesi gerektiği, Opus 5'te `budget_tokens` gönderilirse 400 döndüğü ve `{"type": "adaptive"}` yazılması gerektiği, yanıt içeriğinin blok listesi olduğu ve `thinking` bloklarının ayıklanması gerektiği. Bunların en az ikisi hafızadan yazılsaydı yanlış olurdu.
+
+**Tasarım kararı 1 — maliyet yukarı yuvarlanır:**
+
+`estimate_cost` bilinmeyen bir model kimliği için **en pahalı bilinen fiyatı** kullanıyor. İlk sezgi "bilinmiyorsa sıfır" yazmaktı; bu, `MAX_MALIYET_USD` tavanını sessizce devre dışı bırakırdı — yeni bir model kimliği girilir girilmez harcama sınırsız olurdu. Aynı gerekçeyle Sonnet 5'in 31.08'e kadar geçerli tanıtım fiyatı ($2/$10) yerine liste fiyatı ($3/$15) yazıldı: tavan hesabı gerçek maliyetin **üstünde** kalmalı.
+
+**Tasarım kararı 2 — OpenAI SDK'sı çıkarıldı:**
+
+Anthropic tarafında SDK'nın soyutlamaları gerçekten kullanılıyor (akış, önbellek, düşünme blokları). OpenAI tarafında ise tek bir çağrı şekli var. Tek çağrı için büyük bir istemci bağımlılığı taşımanın karşılığı yok; belgelenmiş REST ucu `httpx` ile kullanıldı. Ölçülen sonuç: imaj **464 → 438 MB**.
+
+İkincil fayda: `openai` paketinin 3.x sürümünde çağrı şeklinin ne olduğundan emin değildim ve referansım yoktu. Tahmin ederek SDK kodu yazmak yerine, sözleşmesi kararlı olan REST ucunu kullanmak dürüst olanıydı.
+
+**Tasarım kararı 3 — kaset eksikse uydurulmaz:**
+
+`ReplayProvider` kaset bulamazsa `CassetteMissing` fırlatıyor. Alternatif, makul görünen bir sahte yanıt üretmekti — ama o zaman test yeşil olur ve neyi kaçırdığı görünmezdi. Aynı ilkeyle kasete sistem promptunun tam metni değil hash'i yazılıyor: prompt dosyaları zaten depoda sürümlü, ikinci kopya senkronizasyon riski.
+
+**Denetim bulgusu — testin bulduğu güvenlik açığı:**
+
+`test_gecersiz_rol_reddedilir` testi `sistem` rolü için anahtar göndermeyi denedi ve **200 aldı**. Şema `Role` enum'unu kabul ediyordu, `sistem` de o enum'un üyesiydi. Sonuç: hiçbir zaman kullanılmayacak bir sır bellekte tutulabiliyordu — `sistem` rolü LLM'e gitmez, durum geçişlerini kaydeder.
+
+Düzeltme **uç noktada değil kasa katmanında** yapıldı (`KeyVault.set` artık `AGENT_ROLES` dışını reddediyor), çünkü kasayı çağıran başka bir yol da aynı hatayı yapabilirdi. Uç nokta düzeltmeyi miras aldı.
+
+**Denetim tablosuna etkisi:** token tahminleri satırı hâlâ açık — gerçek ölçüm Faz 4'te ilk uçtan uca koşuyla gelecek. Maliyet hesabı artık var ama **hiç gerçek çağrı yapılmadı**; `pricing` fonksiyonunun doğruluğu birim testlerle sınandı, gerçek fatura ile karşılaştırılmadı.
+
+---
+
 ## Sonraki kayıt
 
-Kayıt 3.1'de Faz 3 (sağlayıcı katmanı ve record/replay) işlenecek.
+Kayıt 3.2'de Faz 4 (agent'lar, ana döngü ve ilk uçtan uca oyun) işlenecek.

@@ -13,12 +13,17 @@ import subprocess
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel, Field
 
-from src.config import WORKSPACES_ROOT, in_container, resolve_provider
+from src.config import CASSETTES_DIR, WORKSPACES_ROOT, in_container, resolve_provider
+from src.llm import factory
+from src.llm.replay_provider import ReplayProvider
 from src.orchestrator.limits import LIMITS
+from src.security.key_vault import KeyRejected, KeyVault
 from src.transcript.library import GameLibrary
+from src.transcript.models import Role
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 
@@ -26,6 +31,10 @@ app = FastAPI(title="Agent Oyun Atölyesi", version="0.1.0")
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 library = GameLibrary(WORKSPACES_ROOT)
+
+# Anahtarlar süreç belleğinde durur ve konteyner durunca kaybolur (§3.3).
+# Tek kullanıcılı yerel çalıştırma varsayımı (V3) gereği tek bir kasa var.
+vault = KeyVault()
 
 # Üretilen oyun tarayıcıda çalışır — yani süreç sandbox'ının (§3.3)
 # DIŞINDADIR. Oradaki katmanların hiçbiri burada geçerli değil, o yüzden
@@ -87,11 +96,16 @@ def _runner_user_exists() -> bool:
 def health() -> dict[str, object]:
     provider = resolve_provider()
     node = _node_version()
+    roller = factory.all_roles(vault)
     return {
         "durum": "ayakta",
         "saglayici": provider.name,
         "saglayici_gerekce": provider.reason,
-        "cevrimdisi_mod": provider.is_offline,
+        "cevrimdisi_mod": all(r.saglayici == "replay" for r in roller),
+        "roller": [r.as_dict() for r in roller],
+        "anahtarlar": [f.as_dict() for f in vault.fingerprints()],
+        "kaset_sayisi": ReplayProvider(CASSETTES_DIR).count(),
+        "kayit_modu": factory.recording_enabled(),
         "python": platform.python_version(),
         "node": node,
         "konteyner": in_container(),
@@ -100,6 +114,41 @@ def health() -> dict[str, object]:
         "workspaces_yazilabilir": WORKSPACES_ROOT.is_dir(),
         "limitler": LIMITS.as_dict(),
     }
+
+
+class KeyInput(BaseModel):
+    """Anahtar girişi. `anahtar` alanı hiçbir yanıtta geri dönmez."""
+
+    model_config = {"extra": "forbid"}
+
+    rol: Role
+    saglayici: str = Field(min_length=1, max_length=32)
+    anahtar: str = Field(min_length=1, max_length=512)
+
+
+@app.get("/api/anahtarlar")
+def list_keys() -> dict[str, object]:
+    """Yalnızca maskeli parmak izleri. Anahtarın kendisi asla dönmez."""
+    return {"anahtarlar": [f.as_dict() for f in vault.fingerprints()]}
+
+
+@app.post("/api/anahtarlar")
+def set_key(girdi: KeyInput) -> JSONResponse:
+    try:
+        fingerprint = vault.set(girdi.rol, girdi.saglayici, girdi.anahtar)
+    except KeyRejected as exc:
+        # KeyRejected mesajı anahtarı asla içermez (§6/T8).
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return JSONResponse(
+        content=fingerprint.as_dict(),
+        headers={"Cache-Control": "no-store"},
+    )
+
+
+@app.delete("/api/anahtarlar")
+def clear_keys(rol: Role | None = None) -> dict[str, object]:
+    vault.clear(rol)
+    return {"temizlendi": rol.value if rol else "hepsi"}
 
 
 @app.get("/api/oyunlar")

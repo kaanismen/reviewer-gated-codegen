@@ -130,8 +130,8 @@ gtech-agent-atolyesi/
 ├── src/
 │   ├── orchestrator/  { state_machine.py, loop.py, limits.py }
 │   ├── agents/        { base.py, planner.py, implementer.py, reviewer.py }
-│   ├── llm/           { provider.py, anthropic_provider.py, openai_provider.py,
-│   │                    ollama_provider.py, replay_provider.py }
+│   ├── llm/           { provider.py, pricing.py, factory.py, anthropic_provider.py,
+│   │                    openai_provider.py, ollama_provider.py, replay_provider.py }
 │   ├── tools/         { registry.py, fs_mcp.py, test_runner.py }
 │   ├── sandbox/       { process_runner.py, rlimits.py, import_guard.py }
 │   ├── transcript/    { models.py, store.py, library.py }
@@ -449,7 +449,11 @@ Transkript, `AgentMesaji` listesine ek olarak şu üstveriyi taşır: görev met
 | Tümü (offline) | Ollama — yerel model | Ağ/kota bağımsız demo yedeği, sıfır maliyet |
 | Tümü (test) | `replay_provider` | Kayıtlı yanıtlar; deterministik, API'siz, saniyeler içinde |
 
-Eşleme `.env` üzerinden rol bazında değiştirilebilir. OpenAI sağlayıcısı arayüzü uygular ve seçenek olarak sunulur.
+**Eşleme rol bazında değiştirilebilir.** Karar sırası: `LLM_PROVIDER_<ROL>` → `LLM_PROVIDER` → kasada/ortamda anahtarı olan sağlayıcı → `replay`. Model için `MODEL_<ROL>`. Roller birbirinden bağımsızdır: planlayıcı Anthropic, uygulayıcı OpenAI olabilir.
+
+**Yanlış yapılandırma sistemi açılmaz yapmaz.** İstenen sağlayıcının anahtarı yoksa `replay`e düşülür ve **gerekçe kaydedilir**; sağlık ucu ve arayüz her rol için bu gerekçeyi gösterir. Sessizce düşmek ile hata verip açılmamak arasındaki üçüncü yol budur.
+
+**Token tavanı rol bazlıdır.** Uygulayıcı üç dosyanın tam içeriğini üretir (32.000), diğer roller JSON döndürür (16.000).
 
 ### 8.2 Sağlayıcı arayüzü sözleşmesi
 
@@ -457,7 +461,25 @@ Her sağlayıcı tek bir yöntemi uygular: bir sistem promptu, mesaj listesi ve 
 
 ### 8.3 Record/replay
 
-`replay_provider`, gerçek çağrıların istek-yanıt çiftlerini `tests/cassettes/` altına kaydeder ve test modunda tekrar oynatır. Kabul testleri **API anahtarı olmadan** çalışır. Kayıt dosyaları sır taramasından geçirilerek commit edilir.
+`replay_provider`, gerçek çağrıların istek-yanıt çiftlerini `tests/cassettes/` altına kaydeder ve tekrar oynatır. Kabul testleri **API anahtarı olmadan** çalışır.
+
+| Konu | Karar |
+|---|---|
+| Kaset anahtarı | `LlmRequest.fingerprint()` — model, `max_tokens`, sistem promptu hash'i ve mesaj listesinden türetilir. **Sağlayıcıdan bağımsızdır**: aynı istek hangi sağlayıcıya giderse gitsin aynı kaseti bulur |
+| Kaset eksikse | `CassetteMissing` fırlatılır. **Sahte bir yanıt uydurulmaz** — testin neyi kaçırdığı görünmeli |
+| Kayıt modu | `LLM_KAYIT=1`. Kaset varsa oynatılır, yoksa gerçek çağrı yapılır ve yazılır |
+| Sistem promptu | Kasete **tam metni değil hash'i** yazılır; prompt dosyaları zaten `prompts/` altında sürümlü |
+| Sır güvenliği | Kaset yazılmadan önce gizleme uygulanır **ve** taranır; bulgu kalırsa kaset **yazılmaz**. Bir testi kolaylaştırmak için sır commit etmek kabul edilebilir bir takas değildir |
+
+### 8.4 Neden Anthropic'te SDK, OpenAI'da REST
+
+Anthropic tarafında SDK'nın kendi soyutlamaları kullanılıyor: akış (`messages.stream()`), prompt önbelleği (`cache_control`) ve düşünme blokları. Bunları elle yeniden yazmak hem hataya açık hem gereksiz.
+
+OpenAI tarafında bu projeden yapılan **tek bir çağrı şekli** var (sistem promptu + mesaj listesi → metin). Tek bir çağrı için büyük bir istemci bağımlılığı taşımak, imaj boyutu ve sürüm sürüklenmesi açısından karşılığını vermiyor; belgelenmiş `/v1/chat/completions` ucu `httpx` ile kullanılıyor. Ölçülen sonuç: imaj 464 MB → **438 MB**.
+
+### 8.5 Maliyet hesabı
+
+Maliyet `MAX_MALIYET_USD` tavanını beslediği için hesap **yukarı yuvarlanır**: bilinmeyen bir model kimliği için en pahalı bilinen fiyat kullanılır. Bilinmezliği "ücretsiz" saymak tavanı sessizce devre dışı bırakırdı. Önbellek token'ları ayrı katsayılarla girer (yazma ~1.25x, okuma ~0.1x girdi fiyatı). Sonnet 5'in tanıtım fiyatı yerine liste fiyatı yazılıdır — aynı gerekçeyle.
 
 ---
 
@@ -520,6 +542,7 @@ Bir teslim, aşağıdakilerin tamamı sağlandığında bitmiş sayılır:
 |---|---|---|
 | 1.0 | 14.08.2026 | İlk sürüm — kapsam, mimari, durum makinesi, şemalar, güvenlik politikası |
 | 1.1 | 14.08.2026 | **Eğitmen makinesinde dockerize çalışma şartı eklendi (K5).** §3.3 dağıtım mimarisi, iki kademeli sandbox modu, anahtarsız `replay` başlangıcı ve imaj kısıtları eklendi. §6'ya Docker soketi bağlama takası (S1) ve yedek mod izolasyon zaafı (S2) bilinen sınır olarak yazıldı. §2.3 V1 ve §12 tamamlanma ölçütü güncellendi |
+| 1.9 | 14.08.2026 | **Faz 3 — sağlayıcı katmanı.** `provider.py` (sözleşme + istek parmak izi), `pricing.py`, `factory.py` (rol bazlı çözümleme), Anthropic (SDK: akış + prompt önbelleği + uyarlanabilir düşünme), OpenAI (REST), Ollama, `replay_provider` (kayıt/oynatma). §8.1'e rol bazlı karar sırası, §8.3'e kaset kararları, **§8.4 (SDK vs REST gerekçesi)** ve **§8.5 (maliyet yukarı yuvarlanır)** eklendi. `openai` SDK'sı bağımlılıklardan çıkarıldı — imaj 464 → 438 MB. Anahtar uçları (`/api/anahtarlar`) bağlandı; `sistem` rolünün anahtar alamayacağı kasa katmanında zorlandı. 315 test yeşil |
 | 1.8 | 14.08.2026 | **U4 daraltıldı + oyun kütüphanesi.** U4 ölçütü "harici varlık" değil **"harici varlık dosyası"** olarak yeniden yazıldı: kodla üretilen görsel (canvas) ve ses (Web Audio osilatörü) kapsam içidir. Bu ayrım olmadan flappy bird gibi kapsam içi olması gereken oyunlar yalnızca tıklama sesi yüzünden reddedilirdi. §2.1'e oyun kütüphanesi eklendi: her görev kendi dizininde kalır, üretilen oyunlar listelenir ve aralarında geçiş yapılır; liste ayrı bir indeksten değil transkriptlerden türetilir. §6'ya **T2c (tarayıcıda çalışan üretilmiş kod)** eklendi — süreç sandbox'ı tarayıcıyı kapsamaz, kısıt CSP ve iframe sandbox'ı ile kurulur. 264 test yeşil |
 | 1.7 | 14.08.2026 | **Prompt–şema uyumu.** İnsan tarafından yazılan `prompts/*.v1.md` ile kodun zorladığı şemalar karşılaştırıldı ve dört sapma bulundu (ayrıntı: AI günlüğü Kayıt 2.2). §7.4'e iki iş kuralı eklendi: `RED` en az bir bulgu içermelidir (şema düzeyinde zorlanır) ve **`test_sonucu` orkestratör tarafından ölçülen değerlerle değiştirilir** — beyan edilen sayı karar denetimini atlatamaz. `onem` değerlerinin aksansız yazıldığı vurgulandı. Yeni test dosyası `test_prompt_ornekleri.py`: prompt'lardaki her JSON örneği gerçek şemaya karşı doğrulanıyor, sapma artık sessizce oluşamaz. 236 test yeşil |
 | 1.6 | 14.08.2026 | **Faz 2 — sandbox ve güvenlik uygulandı.** `path_guard`, `secret_scan`, `input_guard`, `import_guard`, `launcher`, `process_runner`, `test_runner`. §3.3'e iki tasarım notu: fırlatıcı süreç (`preexec_fn` kilitlenme riski nedeniyle kullanılmadı) ve erişim devri. §6'ya tehdit **T4b (sahte test kanıtı)** eklendi — TAP özeti enjeksiyonu, son-eşleşme ayrıştırma + çıkış kodu ile iki bağımsız önlemle kapatıldı. Tehdit tablosundaki test sütunları gerçek test adlarıyla dolduruldu. 221 test yeşil |
