@@ -481,7 +481,13 @@ OpenAI tarafında hesabın hangi modellere eriştiği bilinemediği için varsay
 
 **Model karar sırası:** seçim → `MODEL_<ROL>` → sağlayıcı varsayılanı. Seçim **yalnızca aynı sağlayıcı için** geçerlidir — Anthropic için seçilen model OpenAI'a gönderilemez.
 
-**Sağlayıcı karar sırası:** `LLM_PROVIDER_<ROL>` → `LLM_PROVIDER` → kasada/ortamda anahtarı olan sağlayıcı → `replay`. Roller birbirinden bağımsızdır: planlayıcı Anthropic, uygulayıcı OpenAI olabilir.
+**Sağlayıcı karar sırası:** **seçim** → `LLM_PROVIDER_<ROL>` → `LLM_PROVIDER` → kasada/ortamda anahtarı olan sağlayıcı → `replay`. Roller birbirinden bağımsızdır: planlayıcı Anthropic, uygulayıcı OpenAI olabilir.
+
+**Seçim sağlayıcıyı da belirler.** İlk uygulamada seçim yalnızca modeli belirliyordu; sağlayıcı anahtarlara bakılarak seçiliyordu. Sonuç bir kısır döngüydü: `.env`'de Anthropic anahtarı olan bir kullanıcı arayüzden OpenAI seçtiğinde sağlayıcı `anthropic` kalıyor, seçim başka sağlayıcıya ait olduğu için atılıyor ve satır varsayılana dönüyordu — kullanıcıya "kaydete basınca sıfırlanıyor" olarak görünüyordu.
+
+**Seçilen sağlayıcının anahtarı yoksa sessizce başkasına kayılmaz**; `replay`e düşülür ve gerekçe yazılır. Sessiz kayma, kullanıcının gördüğü yapılandırma ile çalışanın farklı olması demektir.
+
+`RoleConfig` iki kaynak alanı taşır — `saglayici_kaynagi` (`secim`/`ortam`/`anahtar`/`yok`) ve `model_kaynagi` (`secim`/`ortam`/`varsayilan`/`yedek`) — arayüz her satırda bunları gösterir. Amaç, ekranda görünen yapılandırmanın gerçekten çalışan yapılandırma olduğunun kanıtlanabilir olması.
 
 **Maliyet ayarı.** Roller bağımsız olduğu için model seçimi doğrudan bir maliyet kaldıracıdır. Ölçülen tic-tac-toe koşusundan hesaplanan örnek:
 
@@ -598,6 +604,7 @@ Bir teslim, aşağıdakilerin tamamı sağlandığında bitmiş sayılır:
 |---|---|---|
 | 1.0 | 14.08.2026 | İlk sürüm — kapsam, mimari, durum makinesi, şemalar, güvenlik politikası |
 | 1.1 | 14.08.2026 | **Eğitmen makinesinde dockerize çalışma şartı eklendi (K5).** §3.3 dağıtım mimarisi, iki kademeli sandbox modu, anahtarsız `replay` başlangıcı ve imaj kısıtları eklendi. §6'ya Docker soketi bağlama takası (S1) ve yedek mod izolasyon zaafı (S2) bilinen sınır olarak yazıldı. §2.3 V1 ve §12 tamamlanma ölçütü güncellendi |
+| 2.3 | 15.08.2026 | **Seçim sağlayıcıyı da belirliyor.** v2.2'deki düzeltme yarımdı: seçim modeli belirliyor ama sağlayıcıyı belirlemiyordu, bu yüzden arayüzden OpenAI seçilip kaydedildiğinde satır varsayılana dönüyordu. Sağlayıcı karar sırasının başına **seçim** kondu; seçilen sağlayıcının anahtarı yoksa sessizce kaymak yerine `replay`e düşülüyor ve gerekçe yazılıyor. `RoleConfig.saglayici_kaynagi` eklendi, arayüz her satırda kaynak etiketi ve **sıfırla** düğmesi gösteriyor. 376 test yeşil |
 | 2.2 | 15.08.2026 | **Model kataloğu + transkript geçmişi + sağlayıcı-farkında varsayılan hatası düzeltildi.** `ROLE_DEFAULT_MODEL` tek tabloydu; yalnızca OpenAI anahtarı girildiğinde `openai` + `claude-opus-5` üretiyor ve çağrı anında patlıyordu. `PROVIDER_DEFAULT_MODEL` ile sağlayıcı bazlı hale getirildi, `RoleConfig.model_kaynagi` eklendi. Yeni `llm/catalog.py` (canlı model listesi, fiyat etiketiyle) ve `llm/selection.py` (diske yazılan rol→model seçimi). Uçlar: `GET /api/modeller`, `GET|POST|DELETE /api/modeller/secim`. Arayüzde rol başına sağlayıcı+model seçimi ve **kütüphaneden transkript görüntüleme**. §8.1'e maliyet ayarı tablosu eklendi. 369 test yeşil |
 | 2.1 | 15.08.2026 | **Faz 5 + sunum katmanı boşluğu.** Sohbet kutusu, **SSE ile canlı transkript**, oyun oynatıcı ve ayarlar paneli. `/api/gorev/akis` ucu eklendi. **Bilinen sınır S6 ve §10.1** yazıldı: `game.html` hiçbir kapıdan geçmiyor ve bu boşluk yapısal — insan testi connect-4'te ters renk eşlemesi buldu, 352 otomatik test bulamazdı. `Usage.fiyat_bilinen` eklendi; fiyatı bilinmeyen model kullanıldığında transkripte `maliyet_ust_sinir` sistem mesajı yazılıyor. **Yalnızca OpenAI ile koşu:** snake `KABUL_EDILDI`, tek tur, kodda sıfır değişiklik. `docker-compose.yml`'ye rol bazlı `MODEL_*` ve `LLM_PROVIDER_*` geçişleri eklendi |
 | 2.0 | 15.08.2026 | **Faz 4 — sistem ilk kez uçtan uca çalıştı.** Gerçek stdio MCP sunucusu (`fs_mcp_server.py` + `mcp_client.py`), üç agent, `orchestrator/loop.py`, `orchestrator/runner.py`, `/api/gorev` uçları. **Üç gerçek koşu:** tic-tac-toe `KABUL_EDILDI` ($0.221, 12 test), connect-4 `KABUL_EDILDI` ($0.179, 9 test), satranç `KAPSAM_DISI` ($0.012, 24 özel durum sayarak). §5'e ölçülen maliyet ve token değerleri yazıldı. 352 test yeşil |

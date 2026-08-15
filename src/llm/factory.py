@@ -76,6 +76,10 @@ class RoleConfig:
     # "secim" | "ortam" | "varsayilan" | "yedek" — arayüz yedek durumunda
     # kullanıcıyı katalogdan seçmeye yönlendirir.
     model_kaynagi: str = "varsayilan"
+    # "secim" | "ortam" | "anahtar" | "yok" — sağlayıcının nereden geldiği.
+    # Arayüzün kullanıcıya yalan söylememesi için gerekli: seçim yapılıp
+    # başka bir sağlayıcı etkin olduysa bu görünmeli.
+    saglayici_kaynagi: str = "anahtar"
 
     def as_dict(self) -> dict[str, object]:
         return {
@@ -85,6 +89,7 @@ class RoleConfig:
             "max_tokens": self.max_tokens,
             "gerekce": self.gerekce,
             "model_kaynagi": self.model_kaynagi,
+            "saglayici_kaynagi": self.saglayici_kaynagi,
         }
 
 
@@ -101,30 +106,66 @@ def _requested_provider(rol: Role) -> str:
 def resolve_role(
     rol: Role, vault: KeyVault, selections: SelectionStore | None = None
 ) -> RoleConfig:
-    """Bir rolün hangi sağlayıcı ve modelle çalışacağını belirler."""
-    requested = _requested_provider(rol)
+    """Bir rolün hangi sağlayıcı ve modelle çalışacağını belirler.
 
-    if requested and requested not in KNOWN_PROVIDERS:
-        return _replay_config(rol, f"'{requested}' tanınmayan bir sağlayıcı", selections)
+    Karar sırası: **kullanıcı seçimi → ortam değişkeni → anahtarı olan
+    sağlayıcı → replay.**
 
-    if requested in KEYLESS_PROVIDERS:
-        return _keyless_config(rol, requested, selections)
+    Seçimin en başta olması bir düzeltmedir. Önceki sürümde seçim yalnızca
+    modeli belirliyordu, sağlayıcı ise anahtarlara bakılarak seçiliyordu.
+    Sonuç: `.env`'de Anthropic anahtarı olan bir kullanıcı arayüzden OpenAI
+    seçtiğinde sağlayıcı `anthropic` kalıyor, seçim başka sağlayıcıya ait
+    olduğu için **atılıyor** ve satır varsayılana dönüyordu — kullanıcının
+    gördüğü "reset" buydu.
+    """
+    ortam = _requested_provider(rol)
+    secim = selections.get(rol) if selections is not None else None
 
-    if requested:
-        if vault.has_key_for(rol, requested):
-            return _keyed_config(rol, requested, f"{requested} anahtarı mevcut", selections)
-        return _replay_config(
-            rol, f"{requested} istendi ama {rol.value} için anahtar yok", selections
-        )
+    if secim is not None:
+        return _from_request(rol, secim.saglayici, "secim", vault, selections)
+    if ortam:
+        return _from_request(rol, ortam, "ortam", vault, selections)
 
     # İstek yoksa: anahtarı olan ilk sağlayıcı
     for candidate in ("anthropic", "openai"):
         if vault.has_key_for(rol, candidate):
             return _keyed_config(
-                rol, candidate, f"{candidate} anahtarı bulundu", selections
+                rol, candidate, f"{candidate} anahtarı bulundu", selections, "anahtar"
             )
 
     return _replay_config(rol, "hiçbir API anahtarı tanımlı değil", selections)
+
+
+def _from_request(
+    rol: Role,
+    saglayici: str,
+    kaynak: str,
+    vault: KeyVault,
+    selections: SelectionStore | None,
+) -> RoleConfig:
+    """Açıkça istenen (seçilen veya ortamdan gelen) sağlayıcıyı çözer."""
+    saglayici = saglayici.strip().lower()
+
+    if saglayici not in KNOWN_PROVIDERS:
+        return _replay_config(rol, f"'{saglayici}' tanınmayan bir sağlayıcı", selections)
+
+    if saglayici in KEYLESS_PROVIDERS:
+        return _keyless_config(rol, saglayici, selections, kaynak)
+
+    if vault.has_key_for(rol, saglayici):
+        etiket = "seçildi" if kaynak == "secim" else "istendi"
+        return _keyed_config(
+            rol, saglayici, f"{saglayici} {etiket}, anahtarı mevcut", selections, kaynak
+        )
+
+    # Seçim korunur ama çalıştırılamaz: sessizce başka bir sağlayıcıya
+    # kaymak, kullanıcının gördüğü ile çalışanın farklı olması demektir.
+    return _replay_config(
+        rol,
+        f"{saglayici} {'seçildi' if kaynak == 'secim' else 'istendi'} ama "
+        f"{rol.value} için anahtar yok",
+        selections,
+    )
 
 
 def _model_for(
@@ -153,7 +194,11 @@ def _model_for(
 
 
 def _keyed_config(
-    rol: Role, saglayici: str, gerekce: str, selections: SelectionStore | None
+    rol: Role,
+    saglayici: str,
+    gerekce: str,
+    selections: SelectionStore | None,
+    saglayici_kaynagi: str = "anahtar",
 ) -> RoleConfig:
     model, kaynak = _model_for(rol, saglayici, selections)
     if kaynak == "yedek":
@@ -165,11 +210,15 @@ def _keyed_config(
         max_tokens=ROLE_MAX_TOKENS[rol],
         gerekce=gerekce,
         model_kaynagi=kaynak,
+        saglayici_kaynagi=saglayici_kaynagi,
     )
 
 
 def _keyless_config(
-    rol: Role, saglayici: str, selections: SelectionStore | None
+    rol: Role,
+    saglayici: str,
+    selections: SelectionStore | None,
+    saglayici_kaynagi: str = "anahtar",
 ) -> RoleConfig:
     if saglayici == "ollama":
         secilen = selections.model_for(rol, "ollama") if selections else None
@@ -180,12 +229,18 @@ def _keyless_config(
             max_tokens=ROLE_MAX_TOKENS[rol],
             gerekce=f"ollama isteniyor ({ollama_base_url()})",
             model_kaynagi="secim" if secilen else "varsayilan",
+            saglayici_kaynagi=saglayici_kaynagi,
         )
-    return _replay_config(rol, "replay açıkça istendi", selections)
+    return _replay_config(
+        rol, "replay açıkça istendi", selections, saglayici_kaynagi
+    )
 
 
 def _replay_config(
-    rol: Role, gerekce: str, selections: SelectionStore | None = None
+    rol: Role,
+    gerekce: str,
+    selections: SelectionStore | None = None,
+    saglayici_kaynagi: str = "yok",
 ) -> RoleConfig:
     model, kaynak = _model_for(rol, "anthropic", selections)
     return RoleConfig(
@@ -195,6 +250,7 @@ def _replay_config(
         max_tokens=ROLE_MAX_TOKENS[rol],
         gerekce=f"{gerekce}; kayıtlı senaryolar oynatılacak",
         model_kaynagi=kaynak,
+        saglayici_kaynagi=saglayici_kaynagi,
     )
 
 

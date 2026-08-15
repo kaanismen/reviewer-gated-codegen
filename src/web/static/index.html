@@ -216,14 +216,16 @@ async function katalogAl(saglayici) {
 function rolleriCiz(roller, anahtarlar) {
   $("roles").innerHTML = roller.map(r => {
     const maske = anahtarlar[r.rol];
-    const yedek = r.model_kaynagi === "yedek";
-    return `<div class="rolerow" data-rol="${r.rol}">
+    const uyari = r.model_kaynagi === "yedek" || r.saglayici === "replay";
+    const secili = r.saglayici_kaynagi === "secim";
+    return `<div class="rolerow" data-rol="${r.rol}" title="${esc(r.gerekce)}">
       <span class="rname">${r.rol}</span>
       <select class="prov">${SAGLAYICILAR.map(s =>
         `<option value="${s}"${s === r.saglayici ? " selected" : ""}>${s}</option>`).join("")}</select>
       <select class="model"><option value="${esc(r.model)}">${esc(r.model)}</option></select>
       <button type="button" class="save">kaydet</button>
-      <span class="src ${yedek ? "yedek" : ""}">${esc(r.model_kaynagi)}${maske ? " · " + maske : ""}</span>
+      <button type="button" class="ghost reset" ${secili ? "" : "disabled"}>sıfırla</button>
+      <span class="src ${uyari ? "yedek" : ""}">${esc(r.saglayici_kaynagi)}/${esc(r.model_kaynagi)}${maske ? " · " + maske : ""}</span>
     </div>`;
   }).join("");
 
@@ -265,6 +267,14 @@ function rolleriCiz(roller, anahtarlar) {
         ? `${govde.rol} → ${govde.saglayici} / ${govde.model} kaydedildi.`
         : "Kaydedilemedi: " + ((await r.json()).detail || r.status);
       if (r.ok) saglikYenile();
+    });
+
+    satir.querySelector(".reset").addEventListener("click", async () => {
+      await fetch(`/api/modeller/secim?rol=${encodeURIComponent(satir.dataset.rol)}`,
+                  { method: "DELETE" });
+      $("rolesNote").textContent =
+        `${satir.dataset.rol} seçimi kaldırıldı; anahtara göre otomatik belirlenecek.`;
+      saglikYenile();
     });
   });
 

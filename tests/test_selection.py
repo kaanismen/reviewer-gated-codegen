@@ -78,6 +78,76 @@ def test_roller_farkli_saglayici_ve_model_alabilir(vault, store):
 
 
 # ==========================================================================
+# Seçim sağlayıcıyı da belirler — "kaydete basınca reset atıyor" hatası
+# ==========================================================================
+
+
+def test_secim_saglayiciyi_da_belirler(vault, store):
+    """Kullanıcının gördüğü hata: .env'de Anthropic anahtarı varken
+    arayüzden OpenAI seçilince satır varsayılana dönüyordu.
+
+    Sebep: sağlayıcı yalnızca anahtarlara bakılarak seçiliyor, seçim ise
+    sadece modeli belirliyordu. Sağlayıcı `anthropic` kalınca, `openai`
+    için yapılmış model seçimi uyuşmadığı için atılıyordu.
+    """
+    vault.set(Role.PLANLAYICI, "anthropic", ANTHROPIC_KEY)
+    vault.set(Role.PLANLAYICI, "openai", OPENAI_KEY)
+    store.set(Role.PLANLAYICI, "openai", "gpt-5.6-sol")
+
+    config = factory.resolve_role(Role.PLANLAYICI, vault, store)
+    assert config.saglayici == "openai"
+    assert config.model == "gpt-5.6-sol"
+    assert config.saglayici_kaynagi == "secim"
+    assert config.model_kaynagi == "secim"
+
+
+def test_secim_ortam_saglayicisini_ezer(vault, store, monkeypatch):
+    monkeypatch.setenv("LLM_PROVIDER", "anthropic")
+    vault.set(Role.PLANLAYICI, "openai", OPENAI_KEY)
+    store.set(Role.PLANLAYICI, "openai", "gpt-4.1")
+    assert factory.resolve_role(Role.PLANLAYICI, vault, store).saglayici == "openai"
+
+
+def test_secim_yokken_ortam_saglayicisi_gecerli(vault, store, monkeypatch):
+    monkeypatch.setenv("LLM_PROVIDER", "openai")
+    vault.set(Role.PLANLAYICI, "openai", OPENAI_KEY)
+    config = factory.resolve_role(Role.PLANLAYICI, vault, store)
+    assert config.saglayici == "openai"
+    assert config.saglayici_kaynagi == "ortam"
+
+
+def test_secilen_saglayicinin_anahtari_yoksa_sessizce_kaymaz(vault, store):
+    """Başka bir sağlayıcıya sessizce kaymak, kullanıcının gördüğü ile
+    çalışanın farklı olması demektir."""
+    vault.set(Role.PLANLAYICI, "anthropic", ANTHROPIC_KEY)
+    store.set(Role.PLANLAYICI, "openai", "gpt-4.1")
+
+    config = factory.resolve_role(Role.PLANLAYICI, vault, store)
+    assert config.saglayici == "replay", "anthropic'e sessizce kaymamalı"
+    assert "anahtar yok" in config.gerekce
+
+
+def test_secim_kaldirilinca_otomatige_doner(vault, store):
+    vault.set(Role.PLANLAYICI, "anthropic", ANTHROPIC_KEY)
+    store.set(Role.PLANLAYICI, "openai", "gpt-4.1")
+    store.clear(Role.PLANLAYICI)
+
+    config = factory.resolve_role(Role.PLANLAYICI, vault, store)
+    assert config.saglayici == "anthropic"
+    assert config.saglayici_kaynagi == "anahtar"
+
+
+def test_secim_yalnizca_kendi_rolunu_etkiler(vault, store):
+    vault.set(Role.PLANLAYICI, "anthropic", ANTHROPIC_KEY)
+    vault.set(Role.PLANLAYICI, "openai", OPENAI_KEY)
+    vault.set(Role.DENETLEYICI, "anthropic", ANTHROPIC_KEY)
+    store.set(Role.PLANLAYICI, "openai", "gpt-4.1")
+
+    assert factory.resolve_role(Role.PLANLAYICI, vault, store).saglayici == "openai"
+    assert factory.resolve_role(Role.DENETLEYICI, vault, store).saglayici == "anthropic"
+
+
+# ==========================================================================
 # Seçim önceliği
 # ==========================================================================
 
@@ -105,14 +175,25 @@ def test_secim_yokken_ortam_degiskeni_kullanilir(vault, store, monkeypatch):
     assert config.model_kaynagi == "ortam"
 
 
-def test_baska_saglayici_icin_yapilan_secim_kullanilmaz(vault, store):
-    """Anthropic için seçilen model OpenAI'a gönderilemez — düzeltilen
-    hatanın tam olarak kendisi."""
-    store.set(Role.PLANLAYICI, "anthropic", "claude-haiku-4-5")
-    vault.set(Role.PLANLAYICI, "openai", OPENAI_KEY)
+def test_baska_saglayici_icin_yapilan_secim_kullanilmaz(store):
+    """Bir sağlayıcı için seçilen model başkasına gönderilemez.
+
+    Seçim artık sağlayıcıyı da belirlediği için bu uyuşmazlık normal akışta
+    oluşamaz; kural yine de `SelectionStore` düzeyinde durur ve replay'e
+    düşüldüğünde devreye girer.
+    """
+    store.set(Role.PLANLAYICI, "openai", "gpt-4.1")
+    assert store.model_for(Role.PLANLAYICI, "openai") == "gpt-4.1"
+    assert store.model_for(Role.PLANLAYICI, "anthropic") is None
+
+
+def test_replaye_dusuldugunde_yabanci_model_gosterilmez(vault, store):
+    """OpenAI seçilip anahtar yoksa replay'e düşülür; gösterilen model
+    OpenAI'a ait bir kimlik olmamalı."""
+    store.set(Role.PLANLAYICI, "openai", "gpt-4.1")
     config = factory.resolve_role(Role.PLANLAYICI, vault, store)
-    assert config.model != "claude-haiku-4-5"
-    assert config.saglayici == "openai"
+    assert config.saglayici == "replay"
+    assert config.model != "gpt-4.1"
 
 
 # ==========================================================================

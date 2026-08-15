@@ -813,6 +813,47 @@ Yeni bir depolama katmanı yazılmadı; var olan dosya sunumu ve izin listesi ye
 
 ---
 
+### Kayıt 4.3 — Aynı hatanın yarısı düzeltilmiş
+
+**Prompt:**
+
+> agent sağlayıcı seçimi hala tutarsız. planlayıcıya openai diyip gpt5.6 sol diyip kaydete basınca otomatik reset atıyor.
+
+**Karar sahibi:** İnsan — ekran görüntüsüyle birlikte bildirdi.
+
+### Düzeltme yarımmış
+
+Kayıt 4.2'de "sağlayıcı-farkında varsayılan" hatası düzeltilmişti: model kimliği artık sağlayıcıya göre seçiliyordu. Ama **seçimin kendisi hâlâ yalnızca modeli belirliyordu**, sağlayıcıyı değil.
+
+Sonuç bir kısır döngüydü:
+
+1. Sağlayıcı yalnızca anahtarlara bakılarak seçiliyor → `.env`'de Anthropic anahtarı var → `anthropic`.
+2. Model seçimi `openai` için yapılmış, sağlayıcı `anthropic` → `SelectionStore.model_for` uyuşmazlık görüp seçimi **atıyor**.
+3. Varsayılana dönülüyor → `claude-opus-5`.
+4. Arayüz sunucu durumunu yeniden çizince satır sıfırlanmış görünüyor.
+
+İronik olan şu: 2. adımdaki "başka sağlayıcı için yapılan seçim kullanılmaz" koruması, tam da Kayıt 4.2'de **hatanın tekrar açılmaması için** eklenmişti. Doğru bir koruma, eksik bir kararın üstüne konunca kullanıcıya bozukluk olarak göründü.
+
+### Ders
+
+Bir hatayı düzeltirken **hangi kararların o hataya bağlı olduğunu** taramak gerekiyordu. "Model kimliği sağlayıcıya aittir" tespiti doğruydu ama yarımdı; doğru tespit "**sağlayıcı ve model tek bir seçimdir, ayrı ayrı çözülemez**" olmalıydı.
+
+Kayıt 4.2'de kendi hatam için "elle düzelttiğim şey, düzeltilmesi gerekenin belirtisiydi" yazmıştım. Buradaki eşdeğeri: düzelttiğim şey belirtinin yarısıydı.
+
+### Yapılan
+
+Sağlayıcı karar sırasının başına **seçim** kondu. Seçilen sağlayıcının anahtarı yoksa artık **sessizce başkasına kayılmıyor** — `replay`e düşülüyor ve gerekçe yazılıyor. Sessiz kayma, kullanıcının ekranda gördüğü yapılandırma ile fiilen çalışanın farklı olması demektir; bu projede tam olarak kaçınılan şey.
+
+`RoleConfig.saglayici_kaynagi` eklendi (`secim`/`ortam`/`anahtar`/`yok`) ve arayüz her satırda `kaynak/kaynak` etiketiyle birlikte bir **sıfırla** düğmesi gösteriyor. Amaç: ekrandaki yapılandırmanın gerçekten çalışan yapılandırma olduğunun görülebilmesi.
+
+Altı yeni test, ilki doğrudan kullanıcının bildirdiği senaryoyu kurgular: `test_secim_saglayiciyi_da_belirler`.
+
+### Bir test güncellemesi ve nedeni
+
+`test_baska_saglayici_icin_yapilan_secim_kullanilmaz` düştü. Sebep hata değil, semantik değişikliği: seçim artık sağlayıcıyı da belirlediği için o uyuşmazlık normal akışta **oluşamıyor**. Test, kuralın hâlâ geçerli olduğu yere taşındı (`SelectionStore` düzeyi ve replay'e düşme durumu) — silinmedi, çünkü kural duruyor, yalnızca erişilebildiği yol değişti.
+
+---
+
 ## Sonraki kayıt
 
-Kayıt 4.3'te demo hazırlığı ve teslim paketi işlenecek.
+Kayıt 4.4'te red/revizyon döngüsünü tetikleyecek koşu ve demo hazırlığı işlenecek.
