@@ -174,7 +174,7 @@ Rubrikteki "denetim raporu" gereksinimi için, bu aşamada AI çıktısının g�
 | Statik içe aktarma denetiminin yeterliliği | **Desen tabanlı — teorik olarak atlatılabilir** | Dize birleştirmeyle modül adı üreten gizlenmiş kod denetimi aşabilir. Negatif testlerle sınanacak; atlatılsa bile ayrıcalık düşürme, rlimit ve konteyner sınırı devrede kalır (tek katman değil, son katman delinir) |
 | rlimit'lerin Docker Desktop altında uygulandığı | ⚠️ **Ölçüldü — kısmen yanlış çıktı** | `RLIMIT_CPU`, `RLIMIT_FSIZE`, `RLIMIT_NPROC` ve ayrıcalık düşürme doğrulandı. Ancak **`RLIMIT_AS` seçimi hatalıydı**: 512 MB'de meşru kod bile çöküyor. `RLIMIT_DATA`ya çevrildi. Ölçüm: `tests/manual/rlimit_olcumu.py`, ayrıntı Kayıt 1.8 |
 | `docker compose up` eğitmen makinesinde çalışır | ✅ **Doğrulandı** (14.08, Faz 0) | Temiz derleme 464 MB imaj üretti, `.env` yokken açıldı, sağlık ucu yeşil |
-| Oyunun iframe'de CSP altında açıldığı | ⬜ **Doğrulanacak — tarayıcıda** | HTTP başlıkları doğrulandı ama "sayfa gerçekten açılıyor mu" ancak tarayıcıda görülür. `sandbox="allow-scripts"` opak kaynak yaratır; `logic.js`'in yüklendiği gözle teyit edilmeli |
+| Oyunun iframe'de CSP altında açıldığı | ✅ **Doğrulandı** (14.08, insan tarafından) | Tarayıcıda açıldı, oyun `kazanan: X` çıktısını verdi. `sandbox="allow-scripts"` opak kaynağına rağmen `logic.js` yüklendi — CSP'ye sunucu kaynağının açıkça yazılması işe yaradı. Doğrulamayı AI değil **insan** yaptı: tarayıcı davranışı süreç içinden ölçülemiyordu |
 
 **Açık risk:** Tabloda "tahmin" ve "test edilmedi" işaretli satırlar henüz doğrulanmamış AI çıktısıdır. Faz 0 üç satırı kapattı ve bir tanesinin **yanlış olduğunu** ortaya çıkardı. Kalan açık maddeler: token tahminleri, "satranç çok zor" iddiası, statik denetimin atlatılabilirliği.
 
@@ -494,6 +494,30 @@ Sunum katmanında kendi kısıtı kuruldu: `connect-src 'none'` (ağ çıkışı
 
 ---
 
+### Kayıt 2.4 — Tarayıcı doğrulaması ve analiz dokümanı
+
+**Prompt:**
+
+> evet doğrulamayı sağladım. kazanan: X sonucu veriyor. Gerekli commitleri ve analiz raporlarını ve AI günlüğünü güncellemediysen güncelle. Sonrasında devam edebiliriz.
+
+**AI çıktısı — özet:**
+
+İnsan tarayıcı doğrulamasını yaptı; denetim tablosundaki son açık satır kapandı. `docs/analiz.md` yazıldı: 12 user story, **24 Given/When/Then kabul kriteri**, uygulanabilirlik ölçütü, varsayım/kısıt/risk tabloları ve **izlenebilirlik matrisi**. Faz planına gerçekleşen durum tablosu eklendi.
+
+**Karar sahibi:** İnsan — hem doğrulama hem "eksik teslim var mı" kontrolü. AI, analiz dokümanının hâlâ yazılmamış olduğunu bu istek üzerine fark etti.
+
+**Süreç bulgusu — teslim kaymıştı:**
+
+`docs/analiz.md` **zorunlu beş teslimden biri** ve eksikliği projeyi değerlendirme dışı bırakıyor (K2). Faz planında 1. güne önerilmiş, sonra Faz 6'ya kaymış ve orada unutulmuştu. İki gün boyunca hiçbir kontrol bunu yakalamadı çünkü **fazlar kod üretimine göre sıralanmıştı, teslimlere göre değil.** İnsanın "analiz raporlarını güncelledin mi" sorusu olmasa 3. güne kalırdı.
+
+Faz planına "gerçekleşen" tablosu eklenerek kalan zorunlu teslimler açıkça listelendi: teknik doküman, kullanım kılavuzu, demo. Ders: **faz planı ilerlemeyi gösteriyor ama eksiği göstermiyordu**; bir plan neyin yapıldığını değil neyin kaldığını görünür kılmalı.
+
+**Doğrulamanın kime ait olduğu:** iframe + CSP kombinasyonunun çalıştığını AI ölçemezdi — tarayıcı davranışı süreç dışındadır. Denetim tablosuna "insan tarafından doğrulandı" olarak yazıldı. Projede bu, ölçümün AI'dan insana devredildiği ikinci nokta (ilki eğitmen makinesinde `docker compose up`).
+
+**İzlenebilirlik matrisi neden yazıldı:** 24 kabul kriterinin her biri bir test adına bağlandı. Rubrikteki analiz ve test kalemlerinin ikisini de aynı tabloyla karşılıyor, ama asıl faydası şu: kriteri olup testi olmayan bir madde artık tabloda **boş görünür**. Bugün boş satır yok.
+
+---
+
 ## Sonraki kayıt
 
-Kayıt 2.4'te Faz 3 (sağlayıcı katmanı ve record/replay) ile `docs/analiz.md` işlenecek.
+Kayıt 3.1'de Faz 3 (sağlayıcı katmanı ve record/replay) işlenecek.

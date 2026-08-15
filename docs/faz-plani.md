@@ -131,6 +131,24 @@ Sıradaki üç varsayım henüz kanıtlanmadı ve üçü de geç keşfedilirse p
 | **2 · 15 Ağu** | Faz 2, Faz 3, Faz 4 | İlk oyun üretildi, transkriptte red turu var |
 | **3 · 16 Ağu** | Faz 5, Faz 6 | Beş teslim tam, demo çekildi |
 
+### Gerçekleşen (14 Ağustos sonu)
+
+Plandan **öndeyiz**: 1. günde Faz 0, 1 ve 2 tamamlandı, ayrıca planda Faz 6'da olan `docs/analiz.md` öne çekildi.
+
+| Faz | Durum | Kanıt |
+|---|---|---|
+| Faz 0 — Docker iskeleti | ✅ | 464 MB imaj, `.env` yokken açılıyor, rlimit'ler ölçüldü |
+| Faz 1 — Şema ve durum makinesi | ✅ | 16 geçiş, 95 test |
+| Faz 2 — Sandbox ve güvenlik | ✅ | 7 modül, T1–T8 için negatif testler |
+| Ek — Oyun kütüphanesi | ✅ | Listeleme, geçiş, yol koruması, CSP |
+| Ek — `docs/analiz.md` | ✅ | 12 user story, 24 kabul kriteri, izlenebilirlik matrisi |
+| Faz 3 — Sağlayıcı katmanı | ⬜ | Sıradaki |
+| Faz 4 — Agent'lar ve döngü | ⬜ | Prompt'lar hazır (insan yazdı, şemayla uyumu doğrulandı) |
+| Faz 5 — Arayüz | ⬜ | Kütüphane paneli hazır; sohbet kutusu ve SSE kaldı |
+| Faz 6 — Kanıt ve teslim | ◐ | `analiz.md` bitti; `teknik.md`, `kilavuz.md`, demo kaldı |
+
+**Kalan zorunlu teslimler:** teknik doküman, kullanım kılavuzu, 5 dk demo. Analiz dokümanı ve AI çalışma günlüğü hazır.
+
 **Paralel yürüyecek insan işi:** prompt yazımı (Gün 1 akşamı – Gün 2 sabahı, Faz 4'ten önce) ve eğitmenlere sorulacak üç açık soru (teslim formatı, demo canlı mı kayıt mı, bireysel mi ekip mi).
 
 ---
