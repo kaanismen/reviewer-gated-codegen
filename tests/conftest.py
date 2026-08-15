@@ -133,6 +133,31 @@ class FakeClock:
 
 
 @pytest.fixture
+def sandbox_workspace():
+    """Gerçek workspace kökü altında geçici bir görev dizini.
+
+    `tmp_path` KULLANILMAZ: pytest onu yalnızca sahibinin girebileceği bir
+    ağaç altında açar, ayrıcalık düşürülen sandbox süreci oraya `stat` bile
+    atamaz. Üretimdeki yerleşim /workspaces/<gorev_id> olduğu için testler de
+    orada koşar — sandbox testinin ortamı üretimden farklı olmamalı.
+    """
+    import shutil
+    from uuid import uuid4
+
+    from src.config import WORKSPACES_ROOT
+
+    if not WORKSPACES_ROOT.is_dir():
+        pytest.skip(f"workspace kökü yok: {WORKSPACES_ROOT}")
+
+    path = WORKSPACES_ROOT / f"test-{uuid4().hex[:8]}"
+    path.mkdir(parents=True)
+    try:
+        yield path
+    finally:
+        shutil.rmtree(path, ignore_errors=True)
+
+
+@pytest.fixture
 def clock() -> FakeClock:
     return FakeClock()
 

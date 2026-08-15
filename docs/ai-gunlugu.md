@@ -378,6 +378,45 @@ Ayrıca konteyner portu `0.0.0.0` yerine `127.0.0.1`'e bağlandı. Arayüz artı
 
 ---
 
+### Kayıt 2.1 — Faz 2: sandbox ve güvenlik
+
+**Prompt:**
+
+> haydi geçelim.
+
+**AI çıktısı — özet:**
+
+Yedi modül: `security/{path_guard, secret_scan, input_guard}`, `sandbox/{import_guard, launcher, process_runner}`, `tools/test_runner`. İki test dosyası (`test_security.py` desen ve mantık testleri, `test_sandbox.py` gerçek süreç başlatan davranış testleri). **Toplam 221 test, ~11 saniye.**
+
+Rubriğin güvenlik-test kalemi artık kanıtlı: T1, T2, T2b, T3, T4, T4b, T5, T6, T7, T8 tehditlerinin her biri için geçen negatif test var ve `PROJECT.md` §6 tablosundaki test sütunları gerçek test adlarıyla dolduruldu.
+
+**Karar sahibi:** AI (Faz 2 içeriği). İnsan onayı: "haydi geçelim".
+
+**Tasarım kararı 1 — `preexec_fn` kullanılmadı:**
+
+Kaynak limitlerini ve ayrıcalık düşürmeyi uygulamanın standart yolu `subprocess`'in `preexec_fn` kancasıdır ve Faz 0 ölçüm betiği de onu kullanıyordu. Ancak `preexec_fn` `fork` ile `exec` arasında çalışır ve **çok iş parçacıklı bir süreçte kilitlenme riski taşır** — Python belgeleri bunu açıkça uyarıyor. Uygulama uvicorn altında koşacağı ve alt süreç bir iş parçacığı havuzundan başlatılacağı için risk gerçek.
+
+Bunun yerine ayrı bir **fırlatıcı süreci** yazıldı (`sandbox/launcher.py`): limitleri kendi üzerine uygular, ayrıcalığı düşürür, sonra `exec` ile hedefe devreder. Kaynak limitleri `exec` sınırını aşarak korunduğu için sonuç aynı, kilitlenme riski yok. Fırlatıcı **projeden hiçbir şey içe aktarmaz** — bu sayede alt sürecin ortamı (`PYTHONPATH` dahil) tamamen temizlenebiliyor.
+
+**Denetim bulgusu 1 — testin ortaya çıkardığı ürün eksiği:**
+
+İlk koşuda bir test `EACCES` ile düştü: ayrıcalık düşürülen süreç, root'un açtığı workspace dizinine `stat` bile atamıyordu. Bu bir test kurgusu hatası gibi görünüyordu ama **gerçek bir ürün eksiğiydi** — üretimde de aynı şey olacaktı ve hata mesajı "üretilen kod bozuk" gibi görünecekti, gerçek sebep izin olduğu hâlde. `ProcessRunner.grant_access()` eklendi ve bilinçli olarak **yalnızca statik denetimi geçmiş kod için** çağrılıyor: reddedilen kodun dizini hiç devredilmiyor.
+
+Ayrıca test kurgusu değiştirildi: sandbox testleri artık `tmp_path` yerine gerçek `/workspaces` altında koşuyor. Gerekçe: sandbox testinin ortamı üretimden farklı olmamalı, yoksa test yeşil olur ama üretim kırılır.
+
+**Denetim bulgusu 2 — AI kendi yazdığı zaafı test ederken buldu (T4b):**
+
+`parse_tap` yazılırken "üretilen kod sahte TAP özeti basarsa ne olur" sorusu akla geldi ve **mevcut davranışı kayda geçiren** bir test yazıldı: ayrıştırıcı ilk eşleşmeyi aldığı için `console.log('# pass 99')` enjeksiyonu mümkündü. Test yazılıp davranış görünür hale gelince zaafın kabul edilebilir olmadığı anlaşıldı ve iki bağımsız önlemle kapatıldı:
+
+1. Ayrıştırıcı artık **son** özet satırını alıyor — gerçek özet çıktının sonundadır.
+2. **Çıkış kodu** ayrıca kontrol ediliyor; çıkış kodu enjekte edilemez.
+
+Bu, T4'ün (sahte KABUL) kardeşi olarak **T4b (sahte test kanıtı)** adıyla tehdit tablosuna girdi. Ders: "mevcut davranışı kayda geçiren test" yazmak, zaafı belgelemenin değil **görünür kılmanın** yolu — görünür olunca kapatılıyor.
+
+**Hâlâ açık:** statik denetimin gizlenmiş kodla atlatılabilirliği (S2). Bu bilinçli bir sınır ve kapatılmayacak; atlatılsa dahi ayrıcalık düşürme, rlimit'ler ve konteyner sınırı devrede kalıyor.
+
+---
+
 ## Sonraki kayıt
 
-Kayıt 2.1'de Faz 2 (sandbox ve güvenlik modülleri) ile `docs/analiz.md` işlenecek.
+Kayıt 2.2'de Faz 3 (sağlayıcı katmanı ve record/replay) ile `docs/analiz.md` işlenecek.
