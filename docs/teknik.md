@@ -160,6 +160,10 @@ Her görev kendi dizinindedir: `workspaces/<gorev_id>/`. Kimlik `20260815-103817
 | `GET` | `/api/anahtarlar` | Maskeli parmak izleri |
 | `POST` | `/api/anahtarlar` | `{rol, saglayici, anahtar}` → maskeli parmak izi |
 | `DELETE` | `/api/anahtarlar` | Kasayı temizler (`?rol=` ile tek rol) |
+| `GET` | `/api/modeller` | `?saglayici=…` — sağlayıcının canlı model kataloğu |
+| `GET` | `/api/modeller/secim` | Kayıtlı rol→model seçimleri |
+| `POST` | `/api/modeller/secim` | `{rol, saglayici, model}` |
+| `DELETE` | `/api/modeller/secim` | Seçimi kaldırır (`?rol=` ile tek rol) |
 | `GET` | `/api/oyunlar` | Üretilmiş oyunlar, en yeniden eskiye |
 | `GET` | `/api/oyunlar/{id}` | Tek kayıt |
 | `DELETE` | `/api/oyunlar/{id}` | Görevi siler |
@@ -183,9 +187,34 @@ Her görev kendi dizinindedir: `workspaces/<gorev_id>/`. Kimlik `20260815-103817
 | Çevrimdışı | Ollama | Ağ/kota bağımsız yedek, sıfır maliyet |
 | Test | `replay` | Kayıtlı yanıtlar; deterministik, API'siz |
 
-Karar sırası: `LLM_PROVIDER_<ROL>` → `LLM_PROVIDER` → anahtarı olan sağlayıcı → `replay`. Roller birbirinden bağımsızdır.
+Bu tablo **varsayılandır**; her rol arayüzden ayrı ayrı değiştirilebilir.
 
-**Yanlış yapılandırma sistemi açılmaz yapmaz.** İstenen sağlayıcının anahtarı yoksa `replay`'e düşülür ve **gerekçe kaydedilir**; sağlık ucu ve arayüz her rol için bunu gösterir.
+**Karar sırası — sağlayıcı:** kullanıcı seçimi → `LLM_PROVIDER_<ROL>` → `LLM_PROVIDER` → anahtarı olan sağlayıcı → `replay`.
+**Karar sırası — model:** kullanıcı seçimi → `MODEL_<ROL>` → sağlayıcı varsayılanı.
+
+Seçimin en başta olması bir düzeltmedir: önceki sürümde seçim yalnızca modeli belirliyor, sağlayıcı anahtarlara bakılarak seçiliyordu; sonuç, arayüzden yapılan seçimin sessizce atılmasıydı.
+
+**Varsayılan model tablosu sağlayıcı bazlıdır**, rol bazlı değil. Tek bir tablo tutmak, yalnızca OpenAI anahtarı olan bir kullanıcıya `openai` + `claude-opus-5` yapılandırması üretiyordu.
+
+**Yanlış yapılandırma sistemi açılmaz yapmaz.** İstenen sağlayıcının anahtarı yoksa `replay`'e düşülür ve **gerekçe kaydedilir**. Sessizce başka bir sağlayıcıya kayılmaz: ekranda görünen yapılandırma ile fiilen çalışan aynı olmalıdır. `RoleConfig` iki kaynak alanı taşır (`saglayici_kaynagi`, `model_kaynagi`) ve arayüz bunları her satırda gösterir.
+
+### 5.1.1 Model kataloğu
+
+`GET /api/modeller?saglayici=…` sağlayıcının kendi `/v1/models` ucundan **canlı** liste döndürür. Sabit liste tutulmaz: modeller zamanla kaybolur ve hangilerine erişildiği hesaba göre değişir. Sohbet dışı modeller (görsel, ses, gömme, transkripsiyon) elenir; fiyatı bilinenler etikette gösterilir (`Claude Sonnet 5 · $3/$15 /MTok`). Sonuçlar 15 dakika bellekte önbelleğe alınır.
+
+Seçim `data/model-secimleri.json` dosyasına yazılır. **Bilinçli asimetri:** anahtar sırdır ve yalnızca bellekte durur; model seçimi tercihtir ve yeniden başlatmayı aşar.
+
+### 5.1.2 Maliyet ayarı
+
+Roller bağımsız olduğu için model seçimi doğrudan bir maliyet kaldıracıdır. Ölçülen tic-tac-toe koşusundan:
+
+| Kurulum | Planlayıcı | Uygulayıcı | Denetleyici | Koşu başına |
+|---|---|---|---|---|
+| Varsayılan | Opus 5 | Sonnet 5 | Opus 5 | $0,221 |
+| Dengeli | Opus 5 | Haiku 4.5 | Sonnet 5 | ≈$0,12 |
+| Ekonomik | Sonnet 5 | Haiku 4.5 | Sonnet 5 | ≈$0,08 |
+
+Planlayıcının güçlü kalması önerilir: kabul kriterlerinin kalitesi işin geri kalanını belirler. Kısmanın ucuz yeri uygulayıcıdır.
 
 ### 5.2 Anthropic'te SDK, OpenAI'da REST
 
@@ -279,8 +308,13 @@ Red, denetleyiciye **kritik bulgu** olarak iletilir ve kod hiç çalıştırılm
 | connect-4 | Anthropic | `KABUL_EDILDI` | 1 | ~7.000 / ~6.000 | $0,179 | ~90 sn |
 | satranç | Anthropic | `KAPSAM_DISI` | 1 | 74 / 1.040 | $0,012 | ~15 sn |
 | snake | **OpenAI** (`gpt-5.4`) | `KABUL_EDILDI` | 1 | 13.141 / 5.126 | ≈$0,10 ¹ | ~40 sn |
+| 2048 | Anthropic | `KABUL_EDILDI` | 1 | — | — | — |
 
-¹ Sistem ≤$0,388 raporladı (bilinmeyen fiyat → üst sınır); gerçek ≈$0,10.
+¹ Sistem ≤$0,388 raporladı (bilinmeyen fiyat → üst sınır); kullanıcı raporuna göre gerçek ≈$0,10, yani üst sınır ~4 kat yüksek. `pricing.py`'ye tahminî bir fiyat **eklenmedi**: harcama tavanını besleyen bir tabloya doğrulanmamış sayı yazmak, bu projenin baştan beri kaçındığı hatadır.
+
+**Toplam harcama: ≈$0,51** (beş koşu, biri gerekçeli ret).
+
+**Dört koşunun dördü de tek turda kabul aldı.** Bu, red/revizyon döngüsünün — sistemin ana mekanizmasının — gerçek koşuda henüz gözlenmediği anlamına gelir. Mekanizma `test_loop.py` içinde uçtan uca sınanmıştır (red → revizyon → kabul, ve aynı gerekçeyle iki red → `LIMIT_ASILDI`), ancak canlı bir örneği kayıtlı değildir. Dürüst ifade: **mekanizma test edilmiştir, sahada gözlenmemiştir.**
 
 **Sağlayıcı değişimi kodda sıfır değişiklik gerektirdi** — yalnızca iki ortam değişkeni.
 
@@ -292,8 +326,9 @@ Red, denetleyiciye **kritik bulgu** olarak iletilir ve kod hiç çalıştırılm
 |---|---|
 | İmaj boyutu | 438 MB |
 | İlk derleme | ~1 dakika |
-| Test paketi | 352 test / ~18 sn |
+| Test paketi | **379 test / ~18 sn** |
 | Token tüketimi (tek tur) | ~13.700 — `MAX_TOKEN_TOPLAM`'ın %9'u |
+| Kaydedilmiş kaset | 10 |
 
 Tavanlar fazlasıyla geniş ve bilinçli olarak düşürülmedi: amaçları normal kullanımı sınırlamak değil, **kontrolden çıkmış bir döngüyü durdurmak**.
 
@@ -342,4 +377,5 @@ Uygulaması **prompt değişikliği** gerektirir; eğitim kuralı K4 gereği pro
 
 | Sürüm | Tarih | Değişiklik |
 |---|---|---|
+| 1.1 | 15.08.2026 | §5.1'e sağlayıcı-farkında varsayılanlar ve seçim öncelikli karar sırası; §5.1.1 model kataloğu, §5.1.2 maliyet ayarı tablosu. §4'e model seçimi uçları. §7'ye 2048 koşusu, toplam harcama ve "mekanizma test edildi, sahada gözlenmedi" notu. Test sayısı 379 |
 | 1.0 | 15.08.2026 | İlk sürüm — mimari, veri modeli, API sözleşmesi, güvenlik, ölçümler, bilinen sınırlar |

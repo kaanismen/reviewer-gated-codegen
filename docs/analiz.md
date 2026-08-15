@@ -99,6 +99,19 @@ Her story `US-nn` ile numaralanır ve §4'teki kabul kriterlerine bağlanır.
 **US-12** — *Kullanıcı olarak*, sistemin kendi anahtarımı hiçbir yere sızdırmamasını istiyorum, *çünkü* ona üçüncü taraf kimlik bilgisi emanet ediyorum.
 → KK-23, KK-24
 
+### Sonradan eklenen story'ler
+
+Aşağıdakiler ilk analiz turunda yoktu; sistem kullanılmaya başlandıktan sonra kullanıcı tarafından istendi.
+
+**US-13** — *Kullanıcı olarak*, her agent için sağlayıcının kataloğundan model seçmek istiyorum, *çünkü* varsayılan kurulum benim ihtiyacım için fazla maliyetli ve hangi modellere eriştiğimi sistem bilemez.
+→ KK-25, KK-26, KK-27
+
+**US-14** — *Kullanıcı olarak*, geçmiş koşuların transkriptlerini okumak istiyorum, *çünkü* nerede ne olduğunu sonradan görebilmem gerekiyor.
+→ KK-28
+
+**US-15** — *Kullanıcı olarak*, ok tuşlarıyla oynanan oyunları sayfa kaymadan oynamak istiyorum.
+→ KK-29
+
 ---
 
 ## 4. Kabul kriterleri (Given / When / Then)
@@ -164,6 +177,18 @@ Her story `US-nn` ile numaralanır ve §4'teki kabul kriterlerine bağlanır.
 **KK-23** — *Given* sağlayıcıdan anahtarı içeren bir hata mesajı geldi, *When* mesaj transkripte yazılır, *Then* anahtar birebir eşleşmeyle silinir ve dışa aktarımda bulunmaz.
 
 **KK-24** — *Given* kullanıcı API anahtarını görev kutusuna yapıştırdı, *When* girdi doğrulanır, *Then* görev **başlatılmaz**; anahtar transkripte veya LLM sağlayıcısına gitmez.
+
+### Model seçimi ve geçmiş
+
+**KK-25** — *Given* bir sağlayıcı için anahtar girilmiş, *When* kullanıcı model listesini açar, *Then* liste **sağlayıcının kendi kataloğundan canlı** gelir; sabit bir listeden değil. Anahtar yoksa katalog reddedilir ve neden söylenir.
+
+**KK-26** — *Given* kullanıcı bir rol için sağlayıcı ve model seçip kaydetti, *When* rol yapılandırması çözümlenir, *Then* **hem sağlayıcı hem model** seçimden gelir; başka bir sağlayıcının anahtarı bulunsa bile seçim ezilmez.
+
+**KK-27** — *Given* seçim kaydedildi, *When* bir görev tamamlanır **veya** konteyner yeniden başlatılır, *Then* seçim korunur ve arayüzde aynı değer görünür.
+
+**KK-28** — *Given* daha önce tamamlanmış koşular var, *When* kullanıcı bir kaydın transkriptini açar, *Then* görev metni, son durum, uygulanan geçiş kuralı, token/maliyet toplamı, **prompt sürüm hash'leri** ve tüm agent mesajları görünür; JSON ve Markdown olarak indirilebilir.
+
+**KK-29** — *Given* ok tuşlarıyla oynanan bir oyun açık, *When* kullanıcı tam ekrana geçer, *Then* oyun iframe sandbox'ını **koruyarak** tam ekran olur ve ok tuşları ana sayfayı kaydırmaz.
 
 ---
 
@@ -240,8 +265,8 @@ Sabit bir oyun listesi, "başa çıkabileceğimiz karmaşıklık" için **kötü
 | # | Gereksinim | Ölçüt | Durum |
 |---|---|---|---|
 | FO-01 | İlk derleme süresi | < 3 dakika | ✅ ~1 dk |
-| FO-02 | İmaj boyutu | < 500 MB | ✅ 464 MB |
-| FO-03 | Otomatik test paketi süresi | < 60 sn | ✅ ~12 sn (264 test) |
+| FO-02 | İmaj boyutu | < 500 MB | ✅ 438 MB |
+| FO-03 | Otomatik test paketi süresi | < 60 sn | ✅ ~18 sn (379 test) |
 | FO-04 | Hiçbir otomatik test gerçek API çağrısı yapmaz | Kod incelemesi | ✅ |
 | FO-05 | Oyun başına maliyet | < $0.50 | ✅ **$0.179–0.221** (15.08 ölçümü) |
 | FO-06 | Sandbox zaman aşımı | 30 sn | ✅ Ölçüldü |
@@ -293,21 +318,33 @@ Her kabul kriterinin bir teste karşılığı vardır. Boş kalan satırlar **he
 | KK-22 | US-06 | `test_key_vault.py::test_parmak_izi_anahtarin_kendisini_icermez` | ✅ |
 | KK-23 | US-12 | `test_key_vault.py::test_saglayici_hatasi_transkripte_anahtarla_girmez` | ✅ |
 | KK-24 | US-12 | `test_security.py::test_gorev_metnindeki_anahtar_gorevi_durdurur` | ✅ |
+| KK-25 | US-13 | `test_web_api.py::test_katalog_anahtarsiz_reddedilir` | ✅ |
+| KK-26 | US-13 | `test_selection.py::test_secim_saglayiciyi_da_belirler` | ✅ |
+| KK-27 | US-13 | `test_selection.py::test_secim_diske_yazilir_ve_geri_okunur` | ✅ |
+| KK-28 | US-14 | `test_library.py` (dosya sunumu) + tarayıcı doğrulaması | ✅ |
+| KK-29 | US-15 | Tarayıcı doğrulaması (otomatik test kapsamı dışı) | ✅ |
 
-**Test dağılımı (14.08.2026, 264 test):**
+**Test dağılımı (15.08.2026, 379 test, ~18 sn):**
 
 | Dosya | Test | Kapsadığı |
 |---|---|---|
 | `test_security.py` | 62 | T1, T2b, T3, T5 |
 | `test_state_machine.py` | 47 | 16 geçiş, tüm koruma koşulları |
+| `test_provider.py` | 32 | Sağlayıcı sözleşmesi, maliyet, kayıt/oynatma |
 | `test_library.py` | 28 | Kütüphane, yol koruması |
 | `test_reviewer_parsing.py` | 25 | T4 — sahte KABUL |
+| `test_selection.py` | 24 | Model seçimi, sağlayıcı-farkında varsayılanlar |
 | `test_feasibility.py` | 23 | Uygulanabilirlik ölçütü |
 | `test_key_vault.py` | 22 | T7, T8 |
+| `test_mcp.py` | 22 | MCP sunucusu + istemcisi |
+| `test_web_api.py` | 22 | HTTP uçları, anahtar sızıntısı |
 | `test_sandbox.py` | 18 | T2, T4b — gerçek süreç |
 | `test_transcript.py` | 16 | Mesaj zarfı, dışa aktarım |
+| `test_loop.py` | 15 | Uçtan uca, red/revizyon döngüsü |
 | `test_limits.py` | 13 | T6 |
 | `test_prompt_ornekleri.py` | 10 | Prompt–şema sapması |
+
+**Hiçbir otomatik test gerçek API çağrısı yapmaz.**
 
 ---
 
@@ -319,6 +356,7 @@ Her kabul kriterinin bir teste karşılığı vardır. Boş kalan satırlar **he
 | A2 | ~~Oyun başına gerçek token ve maliyet~~ | ✅ Ölçüldü: $0.179–0.221, ~13.700 token |
 | A3 | ~~"Satranç LLM için çok zor" iddiası~~ | ✅ Kanıtlandı: sistem 24 özel durum sayarak reddetti |
 | A4 | Kural kartı MCP aracı | Kapsam dışı bırakıldı — filesystem MCP sunucusu şartı zaten karşılıyor |
+| A6 | **Red/revizyon döngüsü gerçek koşuda henüz gözlenmedi.** Dört koşunun dördü de tek turda kabul aldı. Mekanizma `test_loop.py` ile uçtan uca sınandı ama canlı örneği kayıtlı değil | Demo öncesi bir koşu denenecek: planlayıcı güçlü + uygulayıcı zayıf model, kural karmaşıklığı yüksek oyun (othello). Çıkmazsa **öyle raporlanacak** — red garantilemek için prompt'a müdahale edilmeyecek |
 | A5 | **Sunum katmanı boşluğu (S6/R7) prompt'larla kapatılsın mı?** | Kural K4 gereği prompt değişikliği insana ait. İki aday: (1) planlayıcı prompt'una "işaret→oyuncu/renk eşlemesi `logic.js`'te dışa aktarılmalı ve test edilmeli" kuralı; (2) denetleyici prompt'una "sunumun mantıkla **anlamsal** tutarlılığı denetlenir; estetik denetlenmez" ayrımı. Karar insanda |
 
 ---
@@ -327,4 +365,5 @@ Her kabul kriterinin bir teste karşılığı vardır. Boş kalan satırlar **he
 
 | Sürüm | Tarih | Değişiklik |
 |---|---|---|
+| 1.1 | 15.08.2026 | Sonradan eklenen üç story (US-13 model seçimi, US-14 transkript geçmişi, US-15 tam ekran oynatıcı) ve beş kabul kriteri (KK-25…29). R7 (sunum katmanı) gerçekleşmiş risk olarak işaretlendi; R1 gerçekleşmedi olarak kapandı. FO ölçümleri gerçek değerlerle güncellendi. İzlenebilirlik matrisi 29 satıra, test dağılımı 15 dosya / 379 teste çıktı. A6 açık maddesi eklendi: **red/revizyon döngüsü gerçek koşuda henüz gözlenmedi** |
 | 1.0 | 14.08.2026 | İlk sürüm — 12 user story, 24 kabul kriteri, uygulanabilirlik ölçütü, varsayım/kısıt/risk tabloları, izlenebilirlik matrisi |

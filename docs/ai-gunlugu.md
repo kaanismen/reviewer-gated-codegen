@@ -20,7 +20,9 @@ Her kayıt dört alan içerir:
 | **Karar sahibi** | Kararı kimin verdiği — AI önerisi mi, insan tercihi mi |
 | **İnsan müdahalesi** | Neyin reddedildiği, düzeltildiği veya yeniden çerçevelendiği |
 
-Bu dosya proje boyunca büyütülecektir. Aşağıdaki kayıtlar, henüz tek satır kod yazılmadan önceki **analiz ve karar aşamasını** kapsar.
+**Neyin kaydedilmediği.** Akışı sürdüren kısa girdiler ("devam et", "haydi geçelim", "tamam") günlüğe alınmaz. Bunlar bir karar taşımaz; birebir yazılmaları günlüğü şişirir ve asıl kararları görünmez kılar. Böyle bir girdiyle başlayan kayıtlarda **Prompt** alanı yerine ne yapıldığı bir satırla belirtilir. Kaydın kendisi yine tutulur — çünkü orada üretilen iş ve alınan tasarım kararları anlamlıdır.
+
+Bu dosya proje boyunca büyütülmüştür. İlk kayıtlar henüz tek satır kod yazılmadan önceki **analiz ve karar aşamasını**, sonrakiler uygulama ve ölçüm aşamasını kapsar. Sonda toplu **karar kütüğü** ve **denetim özeti** bulunur.
 
 ---
 
@@ -383,9 +385,7 @@ Ayrıca konteyner portu `0.0.0.0` yerine `127.0.0.1`'e bağlandı. Arayüz artı
 
 ### Kayıt 2.1 — Faz 2: sandbox ve güvenlik
 
-**Prompt:**
-
-> haydi geçelim.
+**Tetikleyen:** faz planındaki sıraya devam talimatı (karar taşımayan kısa girdi, kaydedilmedi).
 
 **AI çıktısı — özet:**
 
@@ -522,9 +522,7 @@ Faz planına "gerçekleşen" tablosu eklenerek kalan zorunlu teslimler açıkça
 
 ### Kayıt 3.1 — Faz 3: sağlayıcı katmanı ve kayıt/oynatma
 
-**Prompt:**
-
-> haydi geçelim
+**Tetikleyen:** faz planındaki sıraya devam talimatı (karar taşımayan kısa girdi, kaydedilmedi).
 
 **AI çıktısı — özet:**
 
@@ -890,6 +888,91 @@ Fixture artık `selections`'ı geçici bir dizine bağlıyor ve ilgili ortam de�
 
 ---
 
-## Sonraki kayıt
+---
 
-Kayıt 4.5'te red/revizyon döngüsünü tetikleyecek koşu ve demo hazırlığı işlenecek.
+# Karar kütüğü — tam liste
+
+Kayıt 1.4'teki ilk 13 satırın devamı. "İnsan" işaretli satırlar, AI'ın önerisine rağmen veya AI hiç önermeden verilen kararlardır.
+
+| # | Karar | Sahibi | Not |
+|---|---|---|---|
+| 14 | Docker içinde Docker **reddedildi** | **İnsan** | AI soket bağlamayı varsayılan önermişti; kendi yazdığı S1 sınırıyla çelişiyordu (Kayıt 1.7) |
+| 15 | Teslim: zip + private GitHub deposu | **İnsan** | |
+| 16 | Demo kayıt olacak, canlı değil | **İnsan** | |
+| 17 | Bireysel geliştirme | **İnsan** | A–E blokları tek kişide |
+| 18 | **Kapsam sabit listeden ölçüte çevrildi** | **İnsan** | connect-4 örneğiyle; AI enum'u yazmış ve sorgulamamıştı (Kayıt 1.10) |
+| 19 | Rol bazlı API anahtarı girişi | **İnsan** | "data leak'i önleyecek şekilde" kısıtıyla birlikte |
+| 20 | Gömme tabanlı RAG **reddedildi** | AI önerisi → insan onayı | İnsan sordu, AI gerekçeli hayır dedi; kural kartı alternatifi önerildi |
+| 21 | `KAPSAM_DISI` ayrı son durum olsun | AI önerisi → insan onayı | "Sistem çöktü" ile "değerlendirdi ve yapmadı" ayrımı |
+| 22 | Anahtar bellekte, seçim diskte | AI kararı | Bilinçli asimetri; sır ile tercih ayrımı |
+| 23 | Gerçek MCP sunucusu yazılsın | AI kararı | Fonksiyona "MCP" adı vermek yerine stdio JSON-RPC |
+| 24 | Anthropic'te SDK, OpenAI'da REST | AI kararı | İmaj 464 → 438 MB |
+| 25 | Maliyet tahmini yukarı yuvarlansın | AI kararı | Tavan bir güvenlik mekanizması; bilinmezlik "ücretsiz" sayılamaz |
+| 26 | **Oyun kütüphanesi ve geçiş** | **İnsan** | İkinci görev birinciyi silmemeli |
+| 27 | U4 ölçütü daraltıldı (dosya ≠ ses) | **İnsan** | Flappy bird örneğiyle; AI'ın soyutlama hatası (Kayıt 2.3) |
+| 28 | Tam ekran oynatıcı | **İnsan** | Ok tuşu hata raporu üzerine |
+| 29 | **Model kataloğu ve seçimi** | **İnsan** | Maliyet kaldıracı; altından iki hata çıktı |
+| 30 | Transkript geçmişi görüntüleme | **İnsan** | |
+| 31 | Seçim sağlayıcıyı da belirlesin | **İnsan** (hata raporu) | AI'ın yarım düzeltmesini tamamladı (Kayıt 4.3) |
+| 32 | Günlükte akış promptları kaydedilmesin | **İnsan** | Karar taşımayan girdi günlüğü şişirir |
+
+**Sayım:** 32 kararın **17'si doğrudan insana** ait. Ürünün kimliğini belirleyen kararların (oyun alanı, uygulanabilirlik ölçütü, model kataloğu, kütüphane) tamamı bu grupta.
+
+---
+
+# Denetim özeti — AI nerede yanıldı, kim yakaladı
+
+Rubriğin istediği "denetim raporu" budur. Sıralama kronolojik.
+
+| # | Bulgu | Yakalayan | Sonucu |
+|---|---|---|---|
+| 1 | AI, Docker soketi bağlamayı önerdi ve **kendi yazdığı** çelişkiyi görmezden geldi | İnsan | Mimari değişti, S1 sınırı ortadan kalktı |
+| 2 | `RLIMIT_AS = 512 MB` — okurken doğru, çalışınca meşru kodu bile öldürüyor | **Ölçüm** | `RLIMIT_DATA`ya çevrildi |
+| 3 | Türkçe `lower()` hatası — `"EKSİK" ≠ "eksik"`, ilerleme-yok koruması sessizce çalışmaz olurdu | **Test** | I/İ çeviri tablosu |
+| 4 | `PROJECT.md` §4.2'de üç yazılmamış geçiş dalı (G3r, G9r, G6s) | Uygulama | Tablo tamamlandı |
+| 5 | Prompt ile şema dört noktada sapmıştı; planlayıcı **hiçbir yanıtı** doğrulamadan geçemezdi | Karşılaştırma | `test_prompt_ornekleri.py` yazıldı |
+| 6 | Denetleyici prompt'unun şema örneği kendi mutlak kuralını çiğniyordu | **Test** | Örnek düzeltildi |
+| 7 | Ayrıcalık düşürülen süreç workspace'e erişemiyordu | **Test** | `grant_access`; test ortamı üretime taşındı |
+| 8 | TAP özeti enjekte edilebiliyordu (T4b) | AI kendi testini yazarken | Son-eşleşme + çıkış kodu |
+| 9 | U4 ölçütü fazla genişti — ses ≠ dosya | **İnsan** | Flappy bird kapsama girdi |
+| 10 | Süreç sandbox'ı tarayıcıyı kapsamıyor (T2c) | AI, iframe kurarken | CSP + iframe sandbox |
+| 11 | `allow-same-origin` sessiz bir CSP baypası | AI, kendi kodunu gözden geçirirken | Kaldırıldı |
+| 12 | **`game.html` hiçbir kapıdan geçmiyor** (S6) | **İnsan — oyunu oynayarak** | 379 test bulamazdı; §10.1 sınırı yeniden çizildi |
+| 13 | Bilinmeyen fiyat, transkripte kesin rakam gibi yazılıyordu | AI, OpenAI koşusunu kurarken | `fiyat_bilinen` + uyarı mesajı |
+| 14 | `sistem` rolü anahtar kabul ediyordu | **Test** | Kasa katmanında kapatıldı |
+| 15 | Sağlayıcı değişiyor, model Claude kalıyor | **İnsan** | AI kendi geçici çözümüyle üstünü örtmüştü |
+| 16 | Aynı hatanın yarısı düzeltilmiş — seçim sağlayıcıyı belirlemiyordu | **İnsan** | Karar sırası yeniden kuruldu |
+| 17 | Arayüz "ayar kayboldu" gösteriyordu; veri sağlamdı | **İnsan** | Gereksiz yeniden çizim kaldırıldı |
+| 18 | Testler geliştiricinin yerel seçim dosyasına bağımlı hale gelmişti | **Test** | Fixture yalıtıldı |
+
+## Bulguların dağılımı
+
+| Yakalayan | Adet |
+|---|---|
+| İnsan (kullanma, oynama, hata raporu) | **7** |
+| Otomatik test | 5 |
+| AI'ın kendi gözden geçirmesi | 4 |
+| Doğrudan ölçüm | 2 |
+
+## Üç tekrarlayan örüntü
+
+**1. AI kendi belgelediği sakıncayı yine de önerebiliyor.** Bulgu 1'de S1 sınırını yazan da o çözümü öneren de AI'dı. Ders: AI'ın yazdığı "bilinen sınırlar" bölümü kabul edilecek bir teslim değil, sorgulanacak bir kontrol listesidir.
+
+**2. AI kendi geçici çözümüyle hatanın üstünü örtüyor.** Bulgu 2 (`RLIMIT_AS`), 7 (`grant_access`) ve 15 (`MODEL_*` elle verildi) aynı kalıp: AI bir engeli elle aşıyor, aşma işlemini "yapılandırma ayrıntısı" diye not edip geçiyor. Sorulmayan soru hep aynı: *"bunu elle yapmasaydım ne olurdu?"*
+
+**3. Test yalnızca baktığı yeri korur.** Bulgu 12 en keskin örnek: 379 test `logic.js`'i kusursuz doğruluyor, `game.html` hiçbirinin görüş alanında değil. Sistemin garantisi göründüğünden dardır ve bu artık S6/R7 olarak yazılıdır.
+
+## Kapanmamış maddeler
+
+| Madde | Durum |
+|---|---|
+| S2 — statik denetimin gizlenmiş kodla atlatılabilirliği | **Bilinçli sınır**, kapatılmayacak |
+| S5 — arayüzde kimlik doğrulama yok | Tek kullanıcılı yerel çalıştırma varsayımı (V3) |
+| S6 — sunum katmanı doğrulanmıyor | Çözümü prompt değişikliği; kural K4 gereği insanda (`analiz.md` A5) |
+| `gpt-*` model fiyatları | Doğrulanmadığı için tabloya **eklenmedi**; üst sınır ve uyarı yerinde |
+
+---
+
+## Günlüğün durumu
+
+Bu günlük 15 Ağustos 2026 itibarıyla **tamamdır**: 22 kayıt, 32 kararlık kütük, 18 maddelik denetim özeti. Kalan tek iş demo kaydıdır; çekildiğinde buraya son bir kayıt eklenecektir.

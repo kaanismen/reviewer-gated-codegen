@@ -131,23 +131,45 @@ Sıradaki üç varsayım henüz kanıtlanmadı ve üçü de geç keşfedilirse p
 | **2 · 15 Ağu** | Faz 2, Faz 3, Faz 4 | İlk oyun üretildi, transkriptte red turu var |
 | **3 · 16 Ağu** | Faz 5, Faz 6 | Beş teslim tam, demo çekildi |
 
-### Gerçekleşen (14 Ağustos sonu)
+### Gerçekleşen (15 Ağustos sonu)
 
-Plandan **öndeyiz**: 1. günde Faz 0, 1 ve 2 tamamlandı, ayrıca planda Faz 6'da olan `docs/analiz.md` öne çekildi.
+Yedi fazın altısı tamamlandı; plan iki günde bitti, üçüncü gün demo ve cilaya kaldı.
 
 | Faz | Durum | Kanıt |
 |---|---|---|
-| Faz 0 — Docker iskeleti | ✅ | 464 MB imaj, `.env` yokken açılıyor, rlimit'ler ölçüldü |
-| Faz 1 — Şema ve durum makinesi | ✅ | 16 geçiş, 95 test |
+| Faz 0 — Docker iskeleti | ✅ | 438 MB imaj, `.env` yokken açılıyor, rlimit'ler ölçüldü |
+| Faz 1 — Şema ve durum makinesi | ✅ | 16 geçiş, 47 durum makinesi testi |
 | Faz 2 — Sandbox ve güvenlik | ✅ | 7 modül, T1–T8 için negatif testler |
-| Ek — Oyun kütüphanesi | ✅ | Listeleme, geçiş, yol koruması, CSP |
-| Ek — `docs/analiz.md` | ✅ | 12 user story, 24 kabul kriteri, izlenebilirlik matrisi |
-| Faz 3 — Sağlayıcı katmanı | ⬜ | Sıradaki |
-| Faz 4 — Agent'lar ve döngü | ⬜ | Prompt'lar hazır (insan yazdı, şemayla uyumu doğrulandı) |
-| Faz 5 — Arayüz | ⬜ | Kütüphane paneli hazır; sohbet kutusu ve SSE kaldı |
-| Faz 6 — Kanıt ve teslim | ◐ | `analiz.md` bitti; `teknik.md`, `kilavuz.md`, demo kaldı |
+| Faz 3 — Sağlayıcı katmanı | ✅ | 4 sağlayıcı, kayıt/oynatma, 10 kaset |
+| Faz 4 — Agent'lar ve döngü | ✅ | Gerçek MCP sunucusu; **4 oyun üretildi** |
+| Faz 5 — Arayüz | ✅ | Sohbet kutusu, SSE canlı transkript, oynatıcı, kütüphane |
+| Faz 6 — Kanıt ve teslim | ◐ | 4 belge hazır; **demo ve ekran görüntüleri kaldı** |
 
-**Kalan zorunlu teslimler:** teknik doküman, kullanım kılavuzu, 5 dk demo. Analiz dokümanı ve AI çalışma günlüğü hazır.
+**Plan dışı eklenenler** (kullanıcı istekleriyle):
+
+| Ek | Neden eklendi |
+|---|---|
+| Oyun kütüphanesi ve geçiş | Kullanıcı isteği — ikinci görev birinciyi silmemeli |
+| Rol bazlı anahtar kasası | Kullanıcı isteği — her agent kendi anahtarıyla |
+| Model kataloğu ve seçimi | Kullanıcı isteği — maliyet kaldıracı; ayrıca bir **hatayı** ortaya çıkardı |
+| Transkript geçmişi görüntüleme | Kullanıcı isteği — "nerede neler olmuş" |
+| Tam ekran / yeni sekme oynatıcı | Kullanıcı hata raporu — ok tuşları sayfayı kaydırıyordu |
+
+### Ölçülen sonuçlar
+
+| Ölçü | Değer |
+|---|---|
+| Test | **379**, ~18 sn, sıfır gerçek API çağrısı |
+| Üretilen oyun | tic-tac-toe, connect-4, snake, 2048 — hepsi oynanabilir |
+| Gerekçeli ret | satranç (`KAPSAM_DISI`, 24 özel durum sayarak) |
+| Oyun başına maliyet | $0,18–0,22 (varsayılan) · ~$0,12 (dengeli kurulum) |
+| Toplam harcama | ≈$0,51 |
+
+### Kapsam daraltma sırası — kullanılmadı
+
+§4'teki dört kesme adımının **hiçbiri uygulanmadı**. Süre kısıtı bağlayıcı olmadı; hem OpenAI hem Ollama sağlayıcıları, dört oyun ve SSE canlı akış korundu.
+
+**Kalan zorunlu teslim:** 5 dakikalık demo kaydı. Analiz, teknik, kılavuz ve AI günlüğü hazır; kılavuzda dört ekran görüntüsü yeri işaretli.
 
 **Paralel yürüyecek insan işi:** prompt yazımı (Gün 1 akşamı – Gün 2 sabahı, Faz 4'ten önce) ve eğitmenlere sorulacak üç açık soru (teslim formatı, demo canlı mı kayıt mı, bireysel mi ekip mi).
 
