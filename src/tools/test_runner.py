@@ -84,6 +84,14 @@ class TestRunner:
     def run(self, workspace: Path) -> TestOutcome:
         workspace = Path(workspace)
 
+        if not workspace.is_dir():
+            return TestOutcome(
+                test_sonucu=TestResult(
+                    gecen=0, kalan=1, cikti=f"Çalışma dizini bulunamadı: {workspace}"
+                ),
+                calistirildi=False,
+            )
+
         violations = scan_workspace(workspace)
         if violations:
             ozet = "; ".join(f"{v.dosya}:{v.satir} {v.sorun}" for v in violations[:5])

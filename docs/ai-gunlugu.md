@@ -417,6 +417,44 @@ Bu, T4'ün (sahte KABUL) kardeşi olarak **T4b (sahte test kanıtı)** adıyla t
 
 ---
 
+### Kayıt 2.2 — Prompt'lar yazıldı; prompt ile şema arasındaki sapma
+
+**Prompt:**
+
+> Şimdi 3 tane md dosyasını da yazdım. Ama bakmanı istediğim bir şey var sanırım 4 oyuna fixli yazıldı. Kontrol edip seninle son konuştuğumuz contexte düzenlemeni isteyorum onları.
+
+**AI çıktısı — özet:**
+
+Üç prompt insan tarafından yazıldı (kural K4). AI bunları şemalara karşı denetledi, dört sapma buldu ve düzeltti; ayrıca sapmanın bir daha oluşmaması için `tests/test_prompt_ornekleri.py` yazıldı — prompt'lardaki her JSON örneği artık gerçek şemaya karşı doğrulanıyor.
+
+**Karar sahibi:** Prompt içeriği **insan**. Denetim ve şema uyumu düzeltmeleri AI. Kapsam sorusunu ("sanırım 4 oyuna fixli yazıldı") insan tespit etti.
+
+**Bulgular — insanın tespit ettiğinden ikisi daha ciddiydi:**
+
+| # | Sapma | Sonucu |
+|---|---|---|
+| 1 | Planlayıcı kapsamı dört oyuna sabitlenmişti | İnsanın tespiti. §2.1.1 uygulanabilirlik ölçütüyle değiştirildi |
+| 2 | **Planlayıcı çıktı şeması tamamen farklıydı** | `{"durum": "PLAN"...}` üretiyordu; şemada `durum` alanı yok, `uygulanabilirlik` zorunlu. `extra="forbid"` nedeniyle **hiçbir yanıtı doğrulamadan geçemezdi** |
+| 3 | **Denetleyici `"düşük"` yazıyordu** | Şema `"dusuk"` bekliyor (aksansız). Enum reddi — her `dusuk` önemli bulgu yanıtı çöpe giderdi |
+| 4 | Denetleyici şema örneği kendi kuralını çiğniyordu | `KABUL` derken `kalan: 1` gösteriyordu — prompt'un üç bölüm sonra "mutlak kural" dediği şeyi örnekte ihlal ediyor |
+
+Dördüncüsünü **yeni yazılan test yakaladı**, insan da AI de gözden kaçırmıştı. Model gördüğü örneği taklit eder; bu örnek T4'ü (sahte KABUL) prompt üzerinden yeniden açardı.
+
+**İkinci ve üçüncü maddeler neden önemli:** ikisi de "prompt doğru, kod doğru, ama birbirlerinden habersiz" kategorisinde. Prompt'ları okurken hiçbiri hatalı görünmüyor. Ancak sistem ilk kez Faz 4'te çalıştırıldığında planlayıcı **her turda** şema hatası verecek, iki denemeden sonra `HATA` durumuna düşecekti — ve hata "LLM saçmalıyor" gibi görünecekti, gerçek sebep prompt ile şemanın farklı sözleşmeler konuşması olduğu hâlde. Faz 4'te saatler kaybettirebilirdi.
+
+**Türetilen kalıcı önlem:** `test_prompt_ornekleri.py`. Prompt'lardaki JSON örnekleri artık şemaya karşı doğrulanıyor; ayrıca planlayıcı prompt'unun hem UYGUN hem UYGUN_DEGIL örneği içermesi ve örneklerin en az birinin bilinen-iyi dört oyunun dışında olması da test ediliyor. Kural K4 prompt'ları AI'dan korur; bu test onları koddan **sapmaktan** korur.
+
+**Kod tarafında iki sıkılaştırma:**
+
+1. `RED` kararı artık şema düzeyinde **en az bir bulgu** gerektiriyor. Gerekçesiz red revizyon turunu boşa harcar: uygulayıcı neyi düzelteceğini bilemez, denetleyici aynı gerekçeyle tekrar reddeder ve sistem ilerleme-yok tespitiyle durur. İnsanın prompt'unda bu kural zaten yazılıydı — şemaya da taşındı.
+2. **`test_sonucu` ölçülür, beyan edilmez** (yeni orkestratör kuralı, Faz 4'te uygulanacak). Mevcut hâliyle §7.4'ün çelişki denetimi denetleyicinin kendi bildirdiği sayıya bakıyordu; denetleyici `kalan: 0` yazarak denetimi atlatabilirdi. Artık orkestratör `TestRunner`ın ölçtüğü değeri yerine koyacak. Denetleyici prompt'u da bunu açıkça bildiriyor.
+
+**Doğrulanan tasarım tercihi:** insanın seçtiği CommonJS modül deseni (`module.exports` guard + düz `<script>` etiketi) sandbox'ta fiilen çalıştırıldı — 2/2 test geçti, statik denetim temiz. Tahmin edilmedi, ölçüldü.
+
+**Yan bulgu:** doğrulama sırasında `TestRunner` olmayan bir dizin için `calistirildi: True` döndürüyordu. Güvenli tarafta bir hataydı (`kalan = 1`) ama transkripte yanıltıcı bir kayıt yazardı; düzeltildi.
+
+---
+
 ## Sonraki kayıt
 
-Kayıt 2.2'de Faz 3 (sağlayıcı katmanı ve record/replay) ile `docs/analiz.md` işlenecek.
+Kayıt 2.3'te Faz 3 (sağlayıcı katmanı ve record/replay) ile `docs/analiz.md` işlenecek.

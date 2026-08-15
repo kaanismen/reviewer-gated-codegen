@@ -418,10 +418,14 @@ Aşağıdakiler kapatılmamış açıklardır. Gizlenmeleri yerine, sonuçlarıy
 |---|---|---|---|
 | `karar` | enum: `KABUL` \| `RED` | ✔ | **Sadece bu iki değer.** Ayrıştırılamayan karar KABUL sayılmaz (bkz. T4) |
 | `gerekce` | string | ✔ | 10–500 karakter. `RED` için boş olamaz |
-| `bulgular` | object[] | ✔ | Her biri `{dosya, sorun, onem}`; `onem` ∈ `kritik` \| `orta` \| `dusuk`. `KABUL` için boş liste olabilir |
+| `bulgular` | object[] | ✔ | Her biri `{dosya, sorun, onem}`; `onem` ∈ `kritik` \| `orta` \| `dusuk` (**aksansız**). `KABUL` için boş liste olabilir; **`RED` için en az 1 zorunlu** |
 | `test_sonucu` | object | ✔ | `{gecen: int, kalan: int, cikti: string}` |
 
 **İş kuralı — karar tutarlılığı:** `karar = KABUL` iken `test_sonucu.kalan > 0` ise sistem kararı geçersiz sayar ve `RED` olarak işler. Denetleyici kendi test sonucuyla çelişemez.
+
+**İş kuralı — red eyleme dönüştürülebilir olmalı:** `RED` kararı hem boş olmayan bir `gerekce` hem **en az bir bulgu** içermek zorundadır, şema düzeyinde zorlanır. Gerekçesiz bir red revizyon turunu boşa harcar: uygulayıcı neyi düzelteceğini bilemez, denetleyici aynı gerekçeyle tekrar reddeder ve sistem ilerleme-yok tespitiyle (G11) durur.
+
+**Orkestratör kuralı — `test_sonucu` ölçülür, beyan edilmez:** Denetleyicinin döndürdüğü `test_sonucu`, orkestratör tarafından `TestRunner`ın **fiilen ölçtüğü** değerlerle değiştirilir; karar tutarlılığı kuralı bu ölçülen değerlere göre uygulanır. Aksi hâlde T4 yeniden açılırdı: denetleyici `kalan: 0` yazarak kendi çelişki denetimini atlatabilirdi. Denetleyici prompt'u bu durumu açıkça bildirir — beyan edilen sayı kararı kurtarmaz, yalnızca çelişkiyi görünür kılar.
 
 ### 7.5 Transkript kaydı
 
@@ -512,6 +516,7 @@ Bir teslim, aşağıdakilerin tamamı sağlandığında bitmiş sayılır:
 |---|---|---|
 | 1.0 | 14.08.2026 | İlk sürüm — kapsam, mimari, durum makinesi, şemalar, güvenlik politikası |
 | 1.1 | 14.08.2026 | **Eğitmen makinesinde dockerize çalışma şartı eklendi (K5).** §3.3 dağıtım mimarisi, iki kademeli sandbox modu, anahtarsız `replay` başlangıcı ve imaj kısıtları eklendi. §6'ya Docker soketi bağlama takası (S1) ve yedek mod izolasyon zaafı (S2) bilinen sınır olarak yazıldı. §2.3 V1 ve §12 tamamlanma ölçütü güncellendi |
+| 1.7 | 14.08.2026 | **Prompt–şema uyumu.** İnsan tarafından yazılan `prompts/*.v1.md` ile kodun zorladığı şemalar karşılaştırıldı ve dört sapma bulundu (ayrıntı: AI günlüğü Kayıt 2.2). §7.4'e iki iş kuralı eklendi: `RED` en az bir bulgu içermelidir (şema düzeyinde zorlanır) ve **`test_sonucu` orkestratör tarafından ölçülen değerlerle değiştirilir** — beyan edilen sayı karar denetimini atlatamaz. `onem` değerlerinin aksansız yazıldığı vurgulandı. Yeni test dosyası `test_prompt_ornekleri.py`: prompt'lardaki her JSON örneği gerçek şemaya karşı doğrulanıyor, sapma artık sessizce oluşamaz. 236 test yeşil |
 | 1.6 | 14.08.2026 | **Faz 2 — sandbox ve güvenlik uygulandı.** `path_guard`, `secret_scan`, `input_guard`, `import_guard`, `launcher`, `process_runner`, `test_runner`. §3.3'e iki tasarım notu: fırlatıcı süreç (`preexec_fn` kilitlenme riski nedeniyle kullanılmadı) ve erişim devri. §6'ya tehdit **T4b (sahte test kanıtı)** eklendi — TAP özeti enjeksiyonu, son-eşleşme ayrıştırma + çıkış kodu ile iki bağımsız önlemle kapatıldı. Tehdit tablosundaki test sütunları gerçek test adlarıyla dolduruldu. 221 test yeşil |
 | 1.5 | 14.08.2026 | **Kapsam ölçüte bağlandı + rol bazlı anahtar girişi.** §2.1.1 uygulanabilirlik ölçütü (U1–U5) eklendi; `oyun` alanı sabit enum olmaktan çıkıp serbest ada dönüştü ve §7.2'ye `uygulanabilirlik` nesnesi ile "planlayıcı kendi ölçümüyle çelişemez" iş kuralı geldi. Yeni son durum `KAPSAM_DISI` ve geçiş G2k — gerekçeli ret artık teknik hatadan ayrı. Satırancın kapsam dışılığı isim yasağı olmaktan çıkıp U2 ölçütünün sonucu oldu. §3.3'e "Rol bazlı anahtar girişi", §6'ya tehdit T8 ve bilinen sınır S5 eklendi; konteyner portu `127.0.0.1`'e bağlandı. 141 test yeşil |
 | 1.4 | 14.08.2026 | **Faz 1 — uygulamadan geri beslenen spesifikasyon boşlukları.** §4.2'ye üç geçiş eklendi: G3r ve G9r (tabloda "2. kez" denen yeniden deneme haklarının 1. kez dalları yazılı değildi), G6s (KK-06'daki "sır bulunursa KABUL geçersiz" dalı tabloda yoktu). §4.2'ye `event_for_review()` kuralı, §7.1'e köken alanlarının rol bazlı zorunluluğu, §7.3'e `arac_cagrilari` iç şeması eklendi. 95 test yeşil |

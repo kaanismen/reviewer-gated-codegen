@@ -245,9 +245,18 @@ class ReviewerContent(BaseModel):
     test_sonucu: TestResult
 
     @model_validator(mode="after")
-    def _gerekce_required_for_rejection(self) -> "ReviewerContent":
-        if self.karar is Decision.RED and not self.gerekce.strip():
-            raise ValueError("RED kararı için gerekçe boş olamaz")
+    def _rejection_must_be_actionable(self) -> "ReviewerContent":
+        """RED, uygulayıcıya iş verecek kadar somut olmalıdır.
+
+        Gerekçesiz veya bulgusuz bir red, revizyon turunu boşa harcar:
+        uygulayıcı neyi düzelteceğini bilemez, denetleyici aynı gerekçeyle
+        tekrar reddeder ve sistem ilerleme-yok tespitiyle durur.
+        """
+        if self.karar is Decision.RED:
+            if not self.gerekce.strip():
+                raise ValueError("RED kararı için gerekçe boş olamaz")
+            if not self.bulgular:
+                raise ValueError("RED kararı en az bir bulgu içermelidir")
         return self
 
     @property

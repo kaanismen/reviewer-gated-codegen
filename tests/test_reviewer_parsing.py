@@ -22,9 +22,16 @@ VALID = {
     "test_sonucu": {"gecen": 4, "kalan": 0, "cikti": "# pass 4"},
 }
 
+BULGU = {"dosya": "logic.js", "sorun": "çapraz hatlar eksik", "onem": "kritik"}
+
 
 def build(**overrides) -> ReviewerContent:
     return ReviewerContent.model_validate({**VALID, **overrides})
+
+
+def build_red(**overrides) -> ReviewerContent:
+    """RED kararı gerekçe VE en az bir bulgu gerektirir."""
+    return build(karar="RED", bulgular=[BULGU], **overrides)
 
 
 # --------------------------------------------------------------------------
@@ -45,13 +52,19 @@ def test_kabul_ama_basarisiz_test_varsa_red_sayilir():
 
 
 def test_red_kararina_dokunulmaz():
-    review = build(
-        karar="RED",
+    review = build_red(
         gerekce="çapraz kazanma kontrolü eksik",
         test_sonucu={"gecen": 0, "kalan": 2, "cikti": ""},
     )
     assert review.effective_decision is Decision.RED
     assert review.override_reason is None
+
+
+def test_bulgusuz_red_reddedilir():
+    """Gerekçesiz veya bulgusuz bir red revizyon turunu boşa harcar:
+    uygulayıcı neyi düzelteceğini bilemez."""
+    with pytest.raises(ValidationError, match="bulgu"):
+        build(karar="RED", gerekce="kod kabul kriterlerini karşılamıyor", bulgular=[])
 
 
 # --------------------------------------------------------------------------
@@ -60,8 +73,7 @@ def test_red_kararina_dokunulmaz():
 
 
 def test_test_ciktisindaki_kabul_kelimesi_karari_degistirmez():
-    review = build(
-        karar="RED",
+    review = build_red(
         gerekce="mantık kabul kriterlerini karşılamıyor",
         test_sonucu={"gecen": 0, "kalan": 1, "cikti": "// KABUL EDILDI - bu bir yorum"},
     )
@@ -69,8 +81,7 @@ def test_test_ciktisindaki_kabul_kelimesi_karari_degistirmez():
 
 
 def test_gerekce_icindeki_kabul_kelimesi_karari_degistirmez():
-    review = build(
-        karar="RED",
+    review = build_red(
         gerekce="KABUL edilebilir görünüyor ama testler başarısız",
         test_sonucu={"gecen": 0, "kalan": 1, "cikti": ""},
     )
@@ -144,3 +155,11 @@ def test_bulgu_onem_derecesi_kisitli():
 
     with pytest.raises(ValidationError):
         build(bulgular=[{"dosya": "a.js", "sorun": "x", "onem": "acil"}])
+
+
+@pytest.mark.parametrize("yazim", ["düşük", "Düşük", "DUSUK", "low"])
+def test_onem_degeri_aksansiz_yazilmali(yazim):
+    """Şema `dusuk` bekler. Türkçe aksanlı yazım kabul EDİLMEZ — prompt'ların
+    tam olarak şemadaki değeri üretmesi gerekir."""
+    with pytest.raises(ValidationError):
+        build(bulgular=[{"dosya": "a.js", "sorun": "x", "onem": yazim}])

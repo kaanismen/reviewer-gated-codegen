@@ -79,10 +79,18 @@ def make_review(
     kalan: int = 1,
     bulgular: list[Finding] | None = None,
 ) -> ReviewerContent:
+    if bulgular is None:
+        # RED en az bir bulgu içermek zorundadır (§7.4); KABUL'de boş olabilir.
+        bulgular = (
+            []
+            if karar is Decision.KABUL
+            else [Finding(dosya="logic.js", sorun="çapraz hatlar kontrol edilmiyor",
+                          onem=Severity.KRITIK)]
+        )
     return ReviewerContent(
         karar=karar,
         gerekce=gerekce,
-        bulgular=bulgular if bulgular is not None else [],
+        bulgular=bulgular,
         test_sonucu=TestResult(gecen=gecen, kalan=kalan, cikti="# fail 1"),
     )
 
