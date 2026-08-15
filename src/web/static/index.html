@@ -87,6 +87,46 @@
   .uyari { border:1px solid #6b5310; border-left-width:3px; border-radius:6px;
            background:#1c1808; color:var(--warn); padding:10px 14px;
            margin-top:12px; font-size:13.5px; }
+
+  /* --- agent hattı --- */
+  .pipeline { display:grid; grid-template-columns:1fr auto 1fr auto 1fr; gap:0 10px;
+              align-items:stretch; }
+  .ok-ara { align-self:center; color:var(--line); font-size:18px; }
+  .agent { border:1px solid var(--line); border-radius:9px; padding:12px 14px;
+           background:#11151d; min-height:104px; transition:border-color .25s, background .25s; }
+  .agent .baslik { display:flex; align-items:center; gap:8px; font-size:12px;
+                   text-transform:uppercase; letter-spacing:.06em; font-weight:700; }
+  .agent .durum { margin-top:8px; font-size:13px; color:var(--muted); }
+  .agent .ozet { margin-top:6px; font-size:12.5px; line-height:1.5; }
+  .agent .sure { float:right; font-size:11px; color:var(--muted);
+                 font-family:ui-monospace,Consolas,monospace; }
+
+  .agent.bekliyor { opacity:.45; }
+  .agent.calisiyor { border-color:var(--accent); background:#121a28; }
+  .agent.bitti { border-color:#245c3a; }
+  .agent.red { border-color:#6b5310; }
+  .agent.kapsam { border-color:#6b5310; }
+  .agent.atlandi { opacity:.3; }
+
+  .isik { width:9px; height:9px; border-radius:50%; background:var(--muted); flex:0 0 auto; }
+  .calisiyor .isik { background:var(--accent); animation:nabiz 1s ease-in-out infinite; }
+  .bitti .isik { background:var(--ok); }
+  .red .isik, .kapsam .isik { background:var(--warn); }
+  @keyframes nabiz { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.35;transform:scale(.75)} }
+
+  .tur-rozet { font-size:10px; padding:1px 7px; border-radius:20px;
+               border:1px solid var(--line); color:var(--muted); font-weight:600;
+               letter-spacing:0; text-transform:none; }
+  .simdi { margin:16px 0 0; font-size:13.5px; color:var(--fg); min-height:20px; }
+  .simdi .spinner { margin-right:7px; }
+  #detayPanel summary { cursor:pointer; color:var(--muted); font-size:12px;
+                        text-transform:uppercase; letter-spacing:.08em;
+                        font-weight:600; margin-top:16px; }
+  #detayPanel[open] summary { margin-bottom:10px; }
+  @media (max-width:720px) {
+    .pipeline { grid-template-columns:1fr; }
+    .ok-ara { display:none; }
+  }
   details.settings summary { cursor:pointer; color:var(--muted); font-size:12px;
     text-transform:uppercase; letter-spacing:.08em; font-weight:600; }
   details.settings[open] summary { margin-bottom:14px; }
@@ -115,9 +155,14 @@
   </div>
 
   <div class="panel" id="transcriptPanel" hidden>
-    <h2>Canlı transkript</h2>
-    <div id="transcript"></div>
+    <h2>Agent hattı</h2>
+    <div class="pipeline" id="pipeline"></div>
+    <p class="simdi" id="simdi"></p>
     <p class="note" id="runSummary"></p>
+    <details id="detayPanel">
+      <summary>Transkript ayrıntısı</summary>
+      <div id="transcript"></div>
+    </details>
   </div>
 
   <div class="panel" id="playerPanel" hidden>
@@ -486,31 +531,145 @@ function mesajHTML(m) {
   </div>`;
 }
 
+// ------------------------------------------------------------ agent hattı
+//
+// Akış yalnızca TAMAMLANAN mesajları taşır; "şu an ne oluyor" bilgisi
+// aradaki boşluklarda yoktur. Ama sıra bilindiği için son mesajdan sonraki
+// adım çıkarılabilir: planlayıcı bitti → uygulayıcı yazıyor, test koştu →
+// denetleyici inceliyor. Kullanıcıya gösterilen budur.
+const AGENTLAR = [
+  { id: "planlayici", ad: "Planlayıcı", is: "görevi değerlendiriyor, kriterleri yazıyor" },
+  { id: "uygulayici", ad: "Uygulayıcı", is: "dosyaları yazıyor" },
+  { id: "denetleyici", ad: "Denetleyici", is: "testleri ve kriterleri inceliyor" },
+];
+
+const DURUM_METNI = {
+  bekliyor: "bekliyor", bitti: "tamamlandı", red: "revizyon istedi",
+  kapsam: "gerekçeli ret", atlandi: "çalıştırılmadı",
+};
+
+let hatDurumu = {};
+let hatSayac = null;
+
+function hatSifirla() {
+  hatDurumu = {};
+  AGENTLAR.forEach(a => (hatDurumu[a.id] = { durum: "bekliyor", ozet: "", basladi: 0, sure: 0 }));
+  $("pipeline").innerHTML = AGENTLAR.map((a, i) =>
+    `${i ? '<span class="ok-ara">→</span>' : ""}
+     <div class="agent bekliyor" id="ag-${a.id}">
+       <div class="baslik"><span class="isik"></span>${a.ad}
+         <span class="tur-rozet" id="tur-${a.id}" hidden></span>
+         <span class="sure" id="sure-${a.id}"></span></div>
+       <div class="durum" id="durum-${a.id}">bekliyor</div>
+       <div class="ozet" id="ozet-${a.id}"></div>
+     </div>`).join("");
+}
+
+function hatCiz() {
+  AGENTLAR.forEach(a => {
+    const s = hatDurumu[a.id], kutu = $(`ag-${a.id}`);
+    if (!kutu) return;
+    kutu.className = "agent " + s.durum;
+    const gecen = s.durum === "calisiyor" && s.basladi
+      ? (Date.now() - s.basladi) / 1000 : s.sure;
+    $(`sure-${a.id}`).textContent = gecen ? `${gecen.toFixed(0)} sn` : "";
+    $(`durum-${a.id}`).textContent = DURUM_METNI[s.durum] || a.is;
+    $(`ozet-${a.id}`).innerHTML = s.ozet;
+  });
+}
+
+function agentDurum(id, durum, ozet) {
+  const s = hatDurumu[id];
+  if (!s) return;
+  if (durum === "calisiyor" && s.durum !== "calisiyor") s.basladi = Date.now();
+  if (durum !== "calisiyor" && s.basladi) {
+    s.sure = (Date.now() - s.basladi) / 1000;
+    s.basladi = 0;
+  }
+  s.durum = durum;
+  if (ozet !== undefined) s.ozet = ozet;
+  hatCiz();
+}
+
+function simdiYaz(metin, calisiyor = true) {
+  $("simdi").innerHTML = calisiyor
+    ? `<span class="spinner"></span>${esc(metin)}` : esc(metin);
+}
+
 function gorevBaslat(gorev) {
   $("transcriptPanel").hidden = false;
   $("transcript").innerHTML = "";
-  $("runSummary").innerHTML = `<span class="spinner"></span> çalışıyor…`;
+  $("runSummary").textContent = "";
   $("taskGo").disabled = true;
+  hatSifirla();
+  agentDurum("planlayici", "calisiyor");
+  simdiYaz("Planlayıcı görevi değerlendiriyor…");
+  clearInterval(hatSayac);
+  hatSayac = setInterval(hatCiz, 500);   // çalışan agent'ın süresi aksın
 
   const kaynak = new EventSource("/api/gorev/akis");
-  let toplam = 0;
+  let toplam = 0, tur = 1;
 
   kaynak.addEventListener("mesaj", e => {
     const m = JSON.parse(e.data);
     toplam += Number(m.maliyet_usd || 0);
     $("transcript").insertAdjacentHTML("beforeend", mesajHTML(m));
-    $("runSummary").innerHTML =
-      `<span class="spinner"></span> çalışıyor… $${toplam.toFixed(4)}`;
+    const i = m.icerik || {};
+
+    if (m.rol === "planlayici") {
+      const u = i.uygulanabilirlik || {};
+      if (u.karar === "UYGUN_DEGIL") {
+        agentDurum("planlayici", "kapsam",
+          `<b>${esc(i.oyun)}</b> · ${u.ozel_durum_sayisi} özel durum`);
+        agentDurum("uygulayici", "atlandi");
+        agentDurum("denetleyici", "atlandi");
+        simdiYaz("Uygulanabilirlik ölçütü geçilemedi — gerekçeli ret", false);
+      } else {
+        agentDurum("planlayici", "bitti",
+          `<b>${esc(i.oyun)}</b> · ${(i.kabul_kriterleri || []).length} kabul kriteri`);
+        agentDurum("uygulayici", "calisiyor");
+        simdiYaz("Uygulayıcı üç dosyayı yazıyor…");
+      }
+    } else if (m.rol === "uygulayici") {
+      agentDurum("uygulayici", "bitti",
+        `${(i.yazilan_dosyalar || []).length} dosya · ${(i.arac_cagrilari || []).length} MCP çağrısı`);
+      simdiYaz("Statik denetim, ardından sandbox'ta testler…");
+    } else if (m.rol === "denetleyici") {
+      const t = i.test_sonucu || {};
+      const kabul = i.karar === "KABUL" && t.kalan === 0;
+      agentDurum("denetleyici", kabul ? "bitti" : "red",
+        `<span class="verdict ${esc(i.karar)}">${esc(i.karar)}</span>
+         geçen ${t.gecen} · kalan ${t.kalan}`);
+      if (kabul) { simdiYaz("Kabul edildi", false); }
+      else {
+        tur += 1;
+        AGENTLAR.slice(1).forEach(a => {
+          const r = $(`tur-${a.id}`); r.hidden = false; r.textContent = `tur ${tur}`;
+        });
+        agentDurum("uygulayici", "calisiyor", "");
+        agentDurum("denetleyici", "bekliyor", "");
+        simdiYaz(`Denetleyici reddetti — uygulayıcı ${tur}. turda düzeltiyor…`);
+      }
+    } else if (m.rol === "sistem" && i.olay === "test_kosuldu") {
+      agentDurum("denetleyici", "calisiyor");
+      simdiYaz("Denetleyici testleri ve kabul kriterlerini inceliyor…");
+    }
+
+    $("runSummary").textContent = `$${toplam.toFixed(4)}`;
   });
 
   kaynak.addEventListener("bitti", e => {
     const d = JSON.parse(e.data);
     kaynak.close();
+    clearInterval(hatSayac);
+    AGENTLAR.forEach(a => {
+      if (hatDurumu[a.id].durum === "calisiyor") agentDurum(a.id, "atlandi");
+    });
     $("taskGo").disabled = false;
     const rapor = d.rapor || {};
-    $("runSummary").textContent = d.hata
-      ? `Hata: ${d.hata}`
-      : `${d.son_durum} · kural ${rapor.uygulanan_kural} · ${rapor.tur} tur · $${toplam.toFixed(4)}`;
+    simdiYaz(d.hata ? `Hata: ${d.hata}`
+                    : `${d.son_durum} · kural ${rapor.uygulanan_kural}`, false);
+    $("runSummary").textContent = `${rapor.tur || 1} tur · $${toplam.toFixed(4)}`;
     kutuphaneYenile().then(() => {
       if (d.son_durum === "KABUL_EDILDI" && d.gorev_id) oyunOynat(d.gorev_id, gorev);
     });
@@ -518,7 +677,10 @@ function gorevBaslat(gorev) {
     saglikYenile({ roller: false });
   });
 
-  kaynak.onerror = () => { kaynak.close(); $("taskGo").disabled = false; };
+  kaynak.onerror = () => {
+    kaynak.close(); clearInterval(hatSayac); $("taskGo").disabled = false;
+    simdiYaz("Bağlantı kesildi", false);
+  };
 }
 
 $("taskForm").addEventListener("submit", async e => {
