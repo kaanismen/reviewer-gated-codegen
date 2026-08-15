@@ -34,7 +34,7 @@ COPY src/ ./src/
 
 # Üretilen oyunların kök dizini. Görev başına alt dizin açılır ve runner'a
 # devredilir; app sürecinin kendisi bu dizine root olarak yazar.
-RUN mkdir -p /workspaces && chown runner:runner /workspaces
+RUN mkdir -p /workspaces /app/data && chown runner:runner /workspaces
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \

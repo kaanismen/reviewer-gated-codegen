@@ -4,6 +4,9 @@
 # Üretilen oyunlar
 workspaces/
 
+# Yerel tercihler (model seçimleri) — makineye özgü
+data/
+
 # Python
 __pycache__/
 *.py[cod]

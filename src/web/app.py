@@ -19,9 +19,17 @@ from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from src.config import CASSETTES_DIR, WORKSPACES_ROOT, in_container, resolve_provider
-from src.llm import factory
+from src.config import (
+    CASSETTES_DIR,
+    SELECTIONS_PATH,
+    WORKSPACES_ROOT,
+    in_container,
+    resolve_provider,
+)
+from src.llm import catalog, factory
+from src.llm.catalog import CatalogError
 from src.llm.replay_provider import ReplayProvider
+from src.llm.selection import SelectionStore
 from src.orchestrator.limits import LIMITS
 from src.orchestrator.runner import TaskBusy, TaskRunner
 from src.security.key_vault import KeyRejected, KeyVault
@@ -38,7 +46,10 @@ library = GameLibrary(WORKSPACES_ROOT)
 # Anahtarlar süreç belleğinde durur ve konteyner durunca kaybolur (§3.3).
 # Tek kullanıcılı yerel çalıştırma varsayımı (V3) gereği tek bir kasa var.
 vault = KeyVault()
-task_runner = TaskRunner(vault, library)
+# Model seçimi sır değil, bir tercihtir — diske yazılır ve yeniden
+# başlatmayı aşar. Anahtarlar aksine yalnızca bellekte durur.
+selections = SelectionStore(SELECTIONS_PATH)
+task_runner = TaskRunner(vault, library, selections=selections)
 
 # Üretilen oyun tarayıcıda çalışır — yani süreç sandbox'ının (§3.3)
 # DIŞINDADIR. Oradaki katmanların hiçbiri burada geçerli değil, o yüzden
@@ -100,7 +111,7 @@ def _runner_user_exists() -> bool:
 def health() -> dict[str, object]:
     provider = resolve_provider()
     node = _node_version()
-    roller = factory.all_roles(vault)
+    roller = factory.all_roles(vault, selections)
     return {
         "durum": "ayakta",
         "saglayici": provider.name,
@@ -227,6 +238,63 @@ def set_key(girdi: KeyInput) -> JSONResponse:
 @app.delete("/api/anahtarlar")
 def clear_keys(rol: Role | None = None) -> dict[str, object]:
     vault.clear(rol)
+    return {"temizlendi": rol.value if rol else "hepsi"}
+
+
+class ModelInput(BaseModel):
+    model_config = {"extra": "forbid"}
+
+    rol: Role
+    saglayici: str = Field(min_length=1, max_length=32)
+    model: str = Field(min_length=1, max_length=128)
+
+
+@app.get("/api/modeller")
+def list_models(saglayici: str, yenile: bool = False) -> dict[str, object]:
+    """Sağlayıcının hesaba açık model listesi.
+
+    Liste sabit tutulmaz, sağlayıcıdan alınır: hangi modellere erişildiği
+    hesaba göre değişir ve sabit bir liste zamanla yanlışa döner.
+    """
+    key = _catalog_key(saglayici)
+    if not key:
+        raise HTTPException(
+            status_code=400,
+            detail=f"{saglayici} kataloğu için önce bir API anahtarı girin",
+        )
+    try:
+        models = catalog.fetch(saglayici, key, force=yenile)
+    except CatalogError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    return {"saglayici": saglayici, "modeller": [m.as_dict() for m in models]}
+
+
+def _catalog_key(saglayici: str) -> str | None:
+    """Katalog için herhangi bir rolün anahtarı yeter."""
+    for rol in (Role.PLANLAYICI, Role.UYGULAYICI, Role.DENETLEYICI):
+        key = vault.get(rol, saglayici)
+        if key:
+            return key
+    return None
+
+
+@app.get("/api/modeller/secim")
+def get_selection() -> dict[str, object]:
+    return {"secimler": selections.as_dict()}
+
+
+@app.post("/api/modeller/secim")
+def set_selection(girdi: ModelInput) -> dict[str, object]:
+    try:
+        secim = selections.set(girdi.rol, girdi.saglayici, girdi.model)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"rol": girdi.rol.value, **secim.as_dict()}
+
+
+@app.delete("/api/modeller/secim")
+def clear_selection(rol: Role | None = None) -> dict[str, object]:
+    selections.clear(rol)
     return {"temizlendi": rol.value if rol else "hepsi"}
 
 

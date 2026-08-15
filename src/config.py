@@ -22,6 +22,11 @@ CASSETTES_DIR = PROJECT_ROOT / "tests" / "cassettes"
 # Konteynerde /workspaces; hostta geliştirirken proje altındaki dizin.
 WORKSPACES_ROOT = Path(os.getenv("WORKSPACES_ROOT") or PROJECT_ROOT / "workspaces")
 
+# Sır olmayan, yeniden başlatmayı aşması gereken tercihler. Anahtarlar
+# BURAYA YAZILMAZ — onlar bilinçli olarak yalnızca bellekte durur (§3.3).
+DATA_DIR = Path(os.getenv("DATA_DIR") or PROJECT_ROOT / "data")
+SELECTIONS_PATH = DATA_DIR / "model-secimleri.json"
+
 
 @dataclass(frozen=True)
 class ProviderChoice:

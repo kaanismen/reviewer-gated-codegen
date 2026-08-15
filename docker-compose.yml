@@ -40,6 +40,8 @@ services:
     volumes:
       # Kayıt modunda üretilen kasetler hostta kalıcı olmalı.
       - ./tests/cassettes:/app/tests/cassettes
+      # Sır olmayan tercihler (model seçimleri). Anahtarlar BURAYA YAZILMAZ.
+      - ./data:/app/data
       # Üretilen oyunlar konteyner kapansa da hosttan incelenebilir kalır.
       - ./workspaces:/workspaces
     extra_hosts:

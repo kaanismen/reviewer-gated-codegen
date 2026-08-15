@@ -758,6 +758,61 @@ Bir kullanım kılavuzunun ürünü övmesi beklenir; burada tersi yapıldı ç�
 
 ---
 
+### Kayıt 4.2 — Kullanıcı bir hata buldu: sağlayıcı değişiyor, model değişmiyor
+
+**Prompt:**
+
+> Öncelikle transkriptleri kaydetmek istiyorum böylelikle transkript geçmişinden nerde neler olmuş görebileceğim. İkincisi claude opus ve sonnet 5 kullanmak biraz fazla maliyetli ama sorun değil. Üçüncüsü api key girdisi var iyi hoş ama agent sağlayıcıları anthropic claude opus 5 sonnet 5 diye sabit duruyor openAI apisi girince hiçbir şey değişmiyor. Bunları da seçeceğimiz modele göre alt modellerinin olduğu bir katalog olsa ve biz oradan seçip kaydetsek çok çok daha faydalı ve işin sonunda maliyeti de çok düşürebiliriz diye düşünüyorum.
+
+**Karar sahibi:** İnsan — üç isteğin üçü de ondan. Üçüncüsü bir özellik isteği gibi ifade edilmişti ama altından **hata** çıktı.
+
+### Bulgu: bu bir eksik değil, bozukluk
+
+`ROLE_DEFAULT_MODEL` tek bir tabloydu ve hep Claude modellerini veriyordu. `resolve_role` anahtara bakıp **sağlayıcıyı** değiştiriyor, ama modeli o tablodan alıyordu. Sonuç: yalnızca OpenAI anahtarı giren bir kullanıcı `openai` + `claude-opus-5` yapılandırması alıyor ve ilk çağrıda patlıyordu.
+
+**Neden hiçbir test yakalamadı:** `test_provider.py::test_roller_farkli_saglayici_kullanabilir` yalnızca `config.saglayici` alanını kontrol ediyordu, `config.model` alanına bakmıyordu. Test doğru şeyi sınıyordu ama **yeterince** sınamıyordu.
+
+**Neden ben fark etmedim:** kendi OpenAI koşumda (Kayıt 3.4) `MODEL_*` ortam değişkenlerini elle vermiştim. O anda "compose'dan geçmiyormuş" diye bir yapılandırma eksiği olarak not ettim ve geçtim — oysa asıl soru "hiç vermeseydim ne olurdu" idi. Elle düzelttiğim şey, düzeltilmesi gereken şeyin belirtisiydi.
+
+Bu, projedeki üçüncü "AI kendi geçici çözümüyle hatanın üstünü örttü" örneği. Öncekiler Kayıt 1.8 (`RLIMIT_AS`) ve Kayıt 2.1 (`grant_access`).
+
+### Düzeltme
+
+`PROVIDER_DEFAULT_MODEL` sağlayıcı bazlı hale getirildi. OpenAI için hesabın hangi modellere eriştiği bilinemediğinden varsayılan **yedek** olarak işaretleniyor (`model_kaynagi`) ve arayüz katalogdan seçmeye yönlendiriyor. Tahmin bir kimlik uydurmak yerine, tahmin olduğunu söylüyor.
+
+`test_selection.py` içinde ilk test doğrudan bu hatayı hedefliyor:
+`test_openai_anahtari_claude_modeli_secmez`.
+
+### Katalog — sabit liste tutulmadı
+
+`GET /api/modeller` sağlayıcının kendi `/v1/models` ucundan canlı liste çekiyor. Sabit liste iki yüzden yanlış olurdu: modeller zamanla kaybolur, ve **hangi modellere erişildiği hesaba göre değişir**. Fiyatı bilinenler etikette gösteriliyor (`Claude Sonnet 5 · $3/$15 /MTok`), bilinmeyenler açıkça öyle işaretleniyor.
+
+### Seçim diske yazılıyor, anahtar yazılmıyor
+
+Bilinçli bir asimetri. Anahtar sırdır; bellekte durur, konteyner durunca kaybolur (§3.3). Model seçimi tercihtir; her açılışta yeniden sorulması gereksiz sürtünmedir. `data/model-secimleri.json` bu yüzden var ve `test_secim_dosyasi_anahtar_icermez` ikisinin karışmadığını sınıyor.
+
+Ayrıca seçim **yalnızca aynı sağlayıcı için** geçerli: Anthropic için seçilen model OpenAI'a gönderilemez — düzeltilen hatanın tekrar açılmaması için.
+
+### Maliyet: istek karşılandı ve ölçüldü
+
+Kullanıcı "maliyeti çok düşürebiliriz" dedi; ölçülen tic-tac-toe koşusundan hesaplanan sonuç onu doğruluyor:
+
+| Kurulum | Koşu başına |
+|---|---|
+| Varsayılan (Opus/Sonnet/Opus) | $0,221 |
+| Dengeli (Opus/Haiku/Sonnet) | ≈$0,12 |
+| Ekonomik (Sonnet/Haiku/Sonnet) | ≈$0,08 |
+
+Kılavuza bir uyarıyla birlikte yazıldı: **planlayıcı güçlü kalmalı**, çünkü kötü bir kabul kriteri uygulayıcı ve denetleyici ne kadar iyi olursa olsun kötü bir oyun üretir. Maliyet kısmanın ucuz yeri uygulayıcıdır, planlayıcı değil.
+
+### Transkript geçmişi
+
+Transkriptler zaten her görev dizininde JSON+Markdown olarak duruyordu; eksik olan **görüntüleme**ydi. Kütüphanedeki her kayda "transkript" düğmesi eklendi: görev metni, son durum, hangi geçiş kuralıyla bitildiği, toplam token/maliyet, **prompt sürüm hash'leri** ve tüm agent mesajları. Reddedilen koşular da listede — neyin neden olmadığını görmek için.
+
+Yeni bir depolama katmanı yazılmadı; var olan dosya sunumu ve izin listesi yeterliydi.
+
+---
+
 ## Sonraki kayıt
 
-Kayıt 4.2'de demo hazırlığı ve teslim paketi işlenecek.
+Kayıt 4.3'te demo hazırlığı ve teslim paketi işlenecek.

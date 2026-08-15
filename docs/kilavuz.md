@@ -73,6 +73,24 @@ Kaydettiğinizde yalnızca **maskeli parmak izi** görünür (`••••9f3a`
 
 Roller birbirinden bağımsızdır: planlayıcıyı Anthropic, uygulayıcıyı OpenAI ile çalıştırabilirsiniz.
 
+### Model seçme — maliyeti buradan düşürürsünüz
+
+Anahtarı kaydettikten sonra her rolün yanındaki **model** açılır kutusuna tıklayın. Liste **sağlayıcınızın kendi kataloğundan** canlı gelir; fiyatı bilinen modeller etiketinde gösterilir (`Claude Sonnet 5 · $3/$15 /MTok`).
+
+Seçtikten sonra **kaydet**. Seçim diske yazılır ve `docker compose down` sonrası da durur — anahtarların aksine.
+
+Roller bağımsız olduğu için model seçimi doğrudan bir maliyet kaldıracıdır:
+
+| Kurulum | Planlayıcı | Uygulayıcı | Denetleyici | Koşu başına |
+|---|---|---|---|---|
+| Varsayılan | Opus 5 | Sonnet 5 | Opus 5 | ~$0,22 |
+| **Dengeli** | Opus 5 | **Haiku 4.5** | **Sonnet 5** | **~$0,12** |
+| Ekonomik | Sonnet 5 | Haiku 4.5 | Sonnet 5 | ~$0,08 |
+
+**Planlayıcıyı güçlü bırakın.** Kabul kriterlerinin kalitesi işin geri kalanını belirler: kötü bir kriter, uygulayıcı ve denetleyici ne kadar iyi olursa olsun kötü bir oyun üretir.
+
+Model seçilmemiş bir sağlayıcıda rolün yanında **`yedek`** yazar — sistem tahminî bir kimlik kullanıyor demektir, katalogdan seçmeniz önerilir.
+
 ### Yol B — `.env` dosyasıyla
 
 Kalıcı bir kurulum istiyorsanız:
@@ -131,6 +149,19 @@ Kabul edilirse oyun kendiliğinden aşağıda açılır.
 **Ok tuşlarıyla oynanan oyunlarda:** önce oyun alanına tıklayın. Odak oyunda değilken ok tuşları sayfayı kaydırır. **Tam ekran** bu sorunu tamamen ortadan kaldırır.
 
 Üretilen tüm oyunlar **Üretilen oyunlar** listesinde kalır; aralarında serbestçe geçiş yapabilirsiniz. Yeni bir görev öncekini silmez.
+
+### Geçmiş transkriptleri okuma
+
+Her kaydın yanındaki **transkript** düğmesi o koşunun tam kaydını açar:
+
+- Görev metni, başlangıç zamanı, son durum ve hangi geçiş kuralıyla bitildiği
+- Toplam tur, token ve maliyet
+- **Kullanılan prompt sürümleri ve hash'leri** — hangi talimatın bu çıktıyı ürettiğinin kanıtı
+- Her agent mesajı: planlayıcının kriterleri, uygulayıcının yazdığı dosyalar, denetleyicinin kararı ve bulguları
+
+Alttaki bağlantılardan **JSON** veya **Markdown** olarak indirebilirsiniz.
+
+Reddedilen koşular da listede kalır (`kapsam dışı`, `limit aşıldı`) — neyin neden olmadığını görmek için.
 
 ---
 

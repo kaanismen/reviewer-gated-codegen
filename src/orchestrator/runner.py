@@ -57,10 +57,17 @@ class Job:
 
 
 class TaskRunner:
-    def __init__(self, vault: KeyVault, library: GameLibrary, limits: Limits | None = None):
+    def __init__(
+        self,
+        vault: KeyVault,
+        library: GameLibrary,
+        limits: Limits | None = None,
+        selections=None,
+    ):
         self.vault = vault
         self.library = library
         self.limits = limits or LIMITS
+        self.selections = selections
         self._lock = threading.Lock()
         self._job: Job | None = None
         self._thread: threading.Thread | None = None
@@ -108,6 +115,7 @@ class TaskRunner:
             library=self.library,
             limits=self.limits,
             on_message=sink,
+            selections=self.selections,
         )
         try:
             outcome = orchestrator.run(job.gorev_metni)

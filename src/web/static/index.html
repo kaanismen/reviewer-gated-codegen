@@ -73,6 +73,17 @@
   .player-head { display:flex; align-items:center; gap:10px; margin-bottom:14px; }
   .player-head h2 { flex:1; }
   .player-head button { font-size:13px; padding:6px 12px; }
+  .rolerow { display:flex; align-items:center; gap:8px; padding:8px 0;
+             border-bottom:1px solid var(--line); flex-wrap:wrap; }
+  .rolerow:last-of-type { border-bottom:0; }
+  .rolerow .rname { flex:0 0 100px; font-weight:600; font-size:13px; }
+  .rolerow select { flex:1; min-width:150px; font-size:13px; padding:6px 9px; }
+  .rolerow select.model { flex:2; min-width:220px; }
+  .rolerow button { font-size:12px; padding:6px 10px; }
+  .rolerow .src { font-size:11px; color:var(--muted); flex:0 0 auto; }
+  .rolerow .src.yedek { color:var(--warn); }
+  .hist { border:1px solid var(--line); border-radius:8px; padding:14px;
+          margin-top:10px; background:#11151d; }
   details.settings summary { cursor:pointer; color:var(--muted); font-size:12px;
     text-transform:uppercase; letter-spacing:.08em; font-weight:600; }
   details.settings[open] summary { margin-bottom:14px; }
@@ -129,8 +140,9 @@
     <details class="settings">
       <summary>Ayarlar ve kurulum denetimi</summary>
 
-      <h2 style="margin-top:18px">Agent sağlayıcıları</h2>
+      <h2 style="margin-top:18px">Agent sağlayıcıları ve modelleri</h2>
       <div id="roles"></div>
+      <p class="note" id="rolesNote"></p>
       <form id="keyForm" autocomplete="off" style="margin-top:14px">
         <select id="keyRole" aria-label="Rol">
           <option value="planlayici">planlayıcı</option>
@@ -180,17 +192,86 @@ function saglikYenile() {
       .map(([k, v]) => `<div><span>${k}</span><span>${esc(v)}</span></div>`).join("");
 
     const anahtarlar = Object.fromEntries(h.anahtarlar.map(a => [a.rol, a.maske]));
-    $("roles").innerHTML = h.roller.map(r => {
-      const maske = anahtarlar[r.rol];
-      const cevrimdisi = r.saglayici === "replay";
-      return rowHTML(cevrimdisi ? "warn" : "ok", r.rol,
-        `${r.saglayici} · ${r.model}${maske ? " · " + maske : ""}`);
-    }).join("");
+    rolleriCiz(h.roller, anahtarlar);
 
     $("keyNote").textContent =
       `${h.kaset_sayisi} kayıtlı senaryo${h.kayit_modu ? " · KAYIT MODU açık" : ""}. ` +
       `Anahtar yalnızca bellekte tutulur, diske yazılmaz ve konteyner durunca kaybolur.`;
   });
+}
+
+// ------------------------------------------------------- model kataloğu
+const SAGLAYICILAR = ["anthropic", "openai", "ollama", "replay"];
+const katalogOnbellek = {};   // saglayici -> modeller
+
+async function katalogAl(saglayici) {
+  if (katalogOnbellek[saglayici]) return katalogOnbellek[saglayici];
+  const r = await fetch(`/api/modeller?saglayici=${encodeURIComponent(saglayici)}`);
+  if (!r.ok) throw new Error((await r.json()).detail || r.status);
+  const d = await r.json();
+  katalogOnbellek[saglayici] = d.modeller;
+  return d.modeller;
+}
+
+function rolleriCiz(roller, anahtarlar) {
+  $("roles").innerHTML = roller.map(r => {
+    const maske = anahtarlar[r.rol];
+    const yedek = r.model_kaynagi === "yedek";
+    return `<div class="rolerow" data-rol="${r.rol}">
+      <span class="rname">${r.rol}</span>
+      <select class="prov">${SAGLAYICILAR.map(s =>
+        `<option value="${s}"${s === r.saglayici ? " selected" : ""}>${s}</option>`).join("")}</select>
+      <select class="model"><option value="${esc(r.model)}">${esc(r.model)}</option></select>
+      <button type="button" class="save">kaydet</button>
+      <span class="src ${yedek ? "yedek" : ""}">${esc(r.model_kaynagi)}${maske ? " · " + maske : ""}</span>
+    </div>`;
+  }).join("");
+
+  $("roles").querySelectorAll(".rolerow").forEach(satir => {
+    const prov = satir.querySelector(".prov");
+    const model = satir.querySelector(".model");
+
+    const doldur = async () => {
+      const saglayici = prov.value;
+      if (saglayici === "replay" || saglayici === "ollama") {
+        model.innerHTML = `<option value="${esc(model.value)}">${esc(model.value)}</option>`;
+        return;
+      }
+      model.innerHTML = `<option>yükleniyor…</option>`;
+      try {
+        const modeller = await katalogAl(saglayici);
+        const secili = model.dataset.secili || "";
+        model.innerHTML = modeller.map(m =>
+          `<option value="${esc(m.id)}"${m.id === secili ? " selected" : ""}>${esc(m.etiket)}</option>`
+        ).join("") || `<option value="">(model bulunamadı)</option>`;
+      } catch (err) {
+        model.innerHTML = `<option value="">${esc(err.message)}</option>`;
+      }
+    };
+
+    prov.addEventListener("change", () => { model.dataset.secili = ""; doldur(); });
+    model.addEventListener("focus", () => {
+      if (model.options.length <= 1) { model.dataset.secili = model.value; doldur(); }
+    }, { once: false });
+
+    satir.querySelector(".save").addEventListener("click", async () => {
+      const govde = { rol: satir.dataset.rol, saglayici: prov.value, model: model.value };
+      if (!govde.model) return;
+      const r = await fetch("/api/modeller/secim", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(govde),
+      });
+      $("rolesNote").textContent = r.ok
+        ? `${govde.rol} → ${govde.saglayici} / ${govde.model} kaydedildi.`
+        : "Kaydedilemedi: " + ((await r.json()).detail || r.status);
+      if (r.ok) saglikYenile();
+    });
+  });
+
+  $("rolesNote").textContent =
+    "Model listesi sağlayıcının kendi kataloğundan alınır — açılır kutuya " +
+    "tıklayın. Seçim diske yazılır ve yeniden başlatmayı aşar; anahtarlar aksine " +
+    "yalnızca bellekte durur.";
 }
 
 // ---------------------------------------------------------------- kütüphane
@@ -241,13 +322,49 @@ function kutuphaneYenile() {
         <span class="name">${esc(o.oyun)}</span>
         <span class="badge ${sinif}">${etiket}</span>
         <span class="meta">${o.tur} tur · $${esc(o.maliyet_usd)}</span>
+        <button class="tx" data-tx="${esc(o.gorev_id)}">transkript</button>
         <button ${o.oynanabilir ? "" : "disabled"}
                 data-id="${esc(o.gorev_id)}" data-ad="${esc(o.oyun)}">oynat</button>
-      </div>`;
+      </div>
+      <div class="hist" id="hist-${esc(o.gorev_id)}" hidden></div>`;
     }).join("");
+
     $("library").querySelectorAll("button[data-id]").forEach(b =>
       b.addEventListener("click", () => oyunOynat(b.dataset.id, b.dataset.ad)));
+    $("library").querySelectorAll("button[data-tx]").forEach(b =>
+      b.addEventListener("click", () => transkriptGoster(b.dataset.tx)));
   });
+}
+
+// ------------------------------------------------------ transkript geçmişi
+async function transkriptGoster(id) {
+  const kutu = $(`hist-${id}`);
+  if (!kutu.hidden) { kutu.hidden = true; return; }
+  kutu.hidden = false;
+  kutu.innerHTML = `<p class="note">yükleniyor…</p>`;
+  try {
+    const t = await (await fetch(`/oyun/${encodeURIComponent(id)}/transkript.json`)).json();
+    const top = t.toplamlar || {};
+    kutu.innerHTML =
+      `<div class="row"><span class="dot"></span><span class="k">görev</span>
+         <span class="v">${esc(t.gorev_metni)}</span></div>
+       <div class="row"><span class="dot"></span><span class="k">başlangıç</span>
+         <span class="v">${esc(t.baslangic)}</span></div>
+       <div class="row"><span class="dot"></span><span class="k">son durum</span>
+         <span class="v">${esc(t.son_durum)} · kural ${esc((t.rapor||{}).uygulanan_kural)}</span></div>
+       <div class="row"><span class="dot"></span><span class="k">toplam</span>
+         <span class="v">${top.tur} tur · ${top.token_girdi}→${top.token_cikti} tok · $${esc(top.maliyet_usd)}</span></div>
+       <div class="row"><span class="dot"></span><span class="k">prompt sürümleri</span>
+         <span class="v">${Object.entries(t.prompt_hashleri || {})
+           .map(([k, v]) => `${esc(k)}@${esc(v)}`).join(" · ") || "—"}</span></div>
+       <div style="margin-top:12px">${(t.mesajlar || []).map(mesajHTML).join("")}</div>
+       <p class="note"><a href="/oyun/${encodeURIComponent(id)}/transkript.md"
+          target="_blank" rel="noopener">Markdown</a> ·
+          <a href="/oyun/${encodeURIComponent(id)}/transkript.json"
+          target="_blank" rel="noopener">JSON</a> olarak indir</p>`;
+  } catch (err) {
+    kutu.innerHTML = `<p class="note">Transkript okunamadı: ${esc(err)}</p>`;
+  }
 }
 
 // ---------------------------------------------------------------- transkript

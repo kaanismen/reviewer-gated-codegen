@@ -471,7 +471,27 @@ Transkript, `AgentMesaji` listesine ek olarak şu üstveriyi taşır: görev met
 | Tümü (offline) | Ollama — yerel model | Ağ/kota bağımsız demo yedeği, sıfır maliyet |
 | Tümü (test) | `replay_provider` | Kayıtlı yanıtlar; deterministik, API'siz, saniyeler içinde |
 
-**Eşleme rol bazında değiştirilebilir.** Karar sırası: `LLM_PROVIDER_<ROL>` → `LLM_PROVIDER` → kasada/ortamda anahtarı olan sağlayıcı → `replay`. Model için `MODEL_<ROL>`. Roller birbirinden bağımsızdır: planlayıcı Anthropic, uygulayıcı OpenAI olabilir.
+**Varsayılan tablo sağlayıcı bazlıdır, rol bazlı değil.** İlk sürümde tek bir `ROLE_DEFAULT_MODEL` tablosu vardı ve bu bir **hataydı**: yalnızca OpenAI anahtarı giren bir kullanıcı `openai` + `claude-opus-5` yapılandırması alıyor, çağrı anında patlıyordu. Model kimliği sağlayıcıya ait bir şeydir, role değil.
+
+OpenAI tarafında hesabın hangi modellere eriştiği bilinemediği için varsayılan **yedek** olarak işaretlenir (`model_kaynagi = "yedek"`) ve arayüz kullanıcıyı katalogdan seçmeye yönlendirir.
+
+**Model seçimi — katalog.** `GET /api/modeller?saglayici=…` sağlayıcının kendi `/v1/models` ucundan canlı liste döndürür. Sabit liste tutulmaz: listedeki modeller zamanla kaybolur ve hangi modellere erişildiği hesaba göre değişir. Fiyatı bilinen modeller etikette `$5/$25 /MTok` gibi gösterilir.
+
+**Seçim diske yazılır, anahtar yazılmaz.** Anahtar sırdır ve yalnızca bellekte durur (§3.3); model seçimi bir tercihtir ve her yeniden başlatmada yeniden sorulması gereksiz sürtünmedir. Dosya: `data/model-secimleri.json`.
+
+**Model karar sırası:** seçim → `MODEL_<ROL>` → sağlayıcı varsayılanı. Seçim **yalnızca aynı sağlayıcı için** geçerlidir — Anthropic için seçilen model OpenAI'a gönderilemez.
+
+**Sağlayıcı karar sırası:** `LLM_PROVIDER_<ROL>` → `LLM_PROVIDER` → kasada/ortamda anahtarı olan sağlayıcı → `replay`. Roller birbirinden bağımsızdır: planlayıcı Anthropic, uygulayıcı OpenAI olabilir.
+
+**Maliyet ayarı.** Roller bağımsız olduğu için model seçimi doğrudan bir maliyet kaldıracıdır. Ölçülen tic-tac-toe koşusundan hesaplanan örnek:
+
+| Kurulum | Planlayıcı | Uygulayıcı | Denetleyici | Koşu başına |
+|---|---|---|---|---|
+| Varsayılan | Opus 5 | Sonnet 5 | Opus 5 | **$0,221** |
+| Dengeli | Opus 5 | Haiku 4.5 | Sonnet 5 | **≈$0,12** |
+| Ekonomik | Sonnet 5 | Haiku 4.5 | Sonnet 5 | **≈$0,08** |
+
+Planlayıcının güçlü kalması önerilir: kabul kriterlerinin kalitesi işin geri kalanını belirler (§8.1 gerekçe sütunu).
 
 **Yanlış yapılandırma sistemi açılmaz yapmaz.** İstenen sağlayıcının anahtarı yoksa `replay`e düşülür ve **gerekçe kaydedilir**; sağlık ucu ve arayüz her rol için bu gerekçeyi gösterir. Sessizce düşmek ile hata verip açılmamak arasındaki üçüncü yol budur.
 
@@ -578,6 +598,7 @@ Bir teslim, aşağıdakilerin tamamı sağlandığında bitmiş sayılır:
 |---|---|---|
 | 1.0 | 14.08.2026 | İlk sürüm — kapsam, mimari, durum makinesi, şemalar, güvenlik politikası |
 | 1.1 | 14.08.2026 | **Eğitmen makinesinde dockerize çalışma şartı eklendi (K5).** §3.3 dağıtım mimarisi, iki kademeli sandbox modu, anahtarsız `replay` başlangıcı ve imaj kısıtları eklendi. §6'ya Docker soketi bağlama takası (S1) ve yedek mod izolasyon zaafı (S2) bilinen sınır olarak yazıldı. §2.3 V1 ve §12 tamamlanma ölçütü güncellendi |
+| 2.2 | 15.08.2026 | **Model kataloğu + transkript geçmişi + sağlayıcı-farkında varsayılan hatası düzeltildi.** `ROLE_DEFAULT_MODEL` tek tabloydu; yalnızca OpenAI anahtarı girildiğinde `openai` + `claude-opus-5` üretiyor ve çağrı anında patlıyordu. `PROVIDER_DEFAULT_MODEL` ile sağlayıcı bazlı hale getirildi, `RoleConfig.model_kaynagi` eklendi. Yeni `llm/catalog.py` (canlı model listesi, fiyat etiketiyle) ve `llm/selection.py` (diske yazılan rol→model seçimi). Uçlar: `GET /api/modeller`, `GET|POST|DELETE /api/modeller/secim`. Arayüzde rol başına sağlayıcı+model seçimi ve **kütüphaneden transkript görüntüleme**. §8.1'e maliyet ayarı tablosu eklendi. 369 test yeşil |
 | 2.1 | 15.08.2026 | **Faz 5 + sunum katmanı boşluğu.** Sohbet kutusu, **SSE ile canlı transkript**, oyun oynatıcı ve ayarlar paneli. `/api/gorev/akis` ucu eklendi. **Bilinen sınır S6 ve §10.1** yazıldı: `game.html` hiçbir kapıdan geçmiyor ve bu boşluk yapısal — insan testi connect-4'te ters renk eşlemesi buldu, 352 otomatik test bulamazdı. `Usage.fiyat_bilinen` eklendi; fiyatı bilinmeyen model kullanıldığında transkripte `maliyet_ust_sinir` sistem mesajı yazılıyor. **Yalnızca OpenAI ile koşu:** snake `KABUL_EDILDI`, tek tur, kodda sıfır değişiklik. `docker-compose.yml`'ye rol bazlı `MODEL_*` ve `LLM_PROVIDER_*` geçişleri eklendi |
 | 2.0 | 15.08.2026 | **Faz 4 — sistem ilk kez uçtan uca çalıştı.** Gerçek stdio MCP sunucusu (`fs_mcp_server.py` + `mcp_client.py`), üç agent, `orchestrator/loop.py`, `orchestrator/runner.py`, `/api/gorev` uçları. **Üç gerçek koşu:** tic-tac-toe `KABUL_EDILDI` ($0.221, 12 test), connect-4 `KABUL_EDILDI` ($0.179, 9 test), satranç `KAPSAM_DISI` ($0.012, 24 özel durum sayarak). §5'e ölçülen maliyet ve token değerleri yazıldı. 352 test yeşil |
 | 1.9 | 14.08.2026 | **Faz 3 — sağlayıcı katmanı.** `provider.py` (sözleşme + istek parmak izi), `pricing.py`, `factory.py` (rol bazlı çözümleme), Anthropic (SDK: akış + prompt önbelleği + uyarlanabilir düşünme), OpenAI (REST), Ollama, `replay_provider` (kayıt/oynatma). §8.1'e rol bazlı karar sırası, §8.3'e kaset kararları, **§8.4 (SDK vs REST gerekçesi)** ve **§8.5 (maliyet yukarı yuvarlanır)** eklendi. `openai` SDK'sı bağımlılıklardan çıkarıldı — imaj 464 → 438 MB. Anahtar uçları (`/api/anahtarlar`) bağlandı; `sistem` rolünün anahtar alamayacağı kasa katmanında zorlandı. 315 test yeşil |

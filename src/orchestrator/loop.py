@@ -28,6 +28,7 @@ from src.agents.reviewer import ReviewerAgent, with_measured_tests
 from src.llm import factory
 from src.llm.pricing import price_for
 from src.llm.provider import ProviderError
+from src.llm.selection import SelectionStore
 from src.orchestrator.limits import LIMITS, BudgetTracker, Limits
 from src.orchestrator.state_machine import (
     Event,
@@ -77,13 +78,14 @@ class Orchestrator:
     library: GameLibrary
     limits: Limits = field(default_factory=lambda: LIMITS)
     on_message: EventSink | None = None
+    selections: SelectionStore | None = None
     # Testler sağlayıcıyı buradan enjekte eder; üretimde `factory` kullanılır.
     provider_builder: Callable[[Role, object], object] | None = None
 
     def _provider(self, rol: Role, config):
         if self.provider_builder is not None:
             return self.provider_builder(rol, config)
-        return factory.build_provider(rol, self.vault, config)
+        return factory.build_provider(rol, self.vault, config, self.selections)
 
     # -- yardımcılar --------------------------------------------------------
 
@@ -112,8 +114,10 @@ class Orchestrator:
         gorev_id = self.library.new_task_id(task.text[:24])
         workspace = self.library.create(gorev_id)
 
-        configs = {rol: factory.resolve_role(rol, self.vault) for rol in
-                   (Role.PLANLAYICI, Role.UYGULAYICI, Role.DENETLEYICI)}
+        configs = {
+            rol: factory.resolve_role(rol, self.vault, self.selections)
+            for rol in (Role.PLANLAYICI, Role.UYGULAYICI, Role.DENETLEYICI)
+        }
         transcript = Transcript(
             gorev_id=gorev_id,
             gorev_metni=task.text,
