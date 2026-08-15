@@ -25,6 +25,25 @@ _TESTS = re.compile(r"^#\s*tests\s+(\d+)\s*$", re.MULTILINE)
 
 MAX_OUTPUT_CHARS = 4_000
 
+# Test çıktısındaki koşuya özgü, anlamsız değişkenlik. Bunlar temizlenmezse
+# aynı kod aynı sonucu verse bile denetleyiciye giden metin her koşuda
+# farklı olur — ve kayıt/oynatma parmak izi ASLA tutmaz (§8.3).
+# Süre değerleri denetim için bilgi taşımıyor; belirlenimlilik daha değerli.
+_NOISE = (
+    re.compile(r"^\s*duration_ms:.*$\n?", re.MULTILINE),      # YAML blokları
+    re.compile(r"^#\s*duration_ms.*$\n?", re.MULTILINE),      # özet satırı
+    # Yalnızca göreve özgü dizin adı değişir; dosya adı ve satır numarası
+    # denetleyici için anlamlıdır, korunur.
+    re.compile(r"/workspaces/[^/\s'\"]+"),
+)
+
+
+def normalize_output(text: str) -> str:
+    """Test çıktısını koşudan koşuya değişmeyen biçime indirger."""
+    for pattern in _NOISE[:2]:
+        text = pattern.sub("", text)
+    return _NOISE[2].sub("<workspace>", text).strip()
+
 
 @dataclass(frozen=True)
 class TestOutcome:
@@ -39,6 +58,7 @@ class TestOutcome:
 
 
 def _clip(text: str) -> str:
+    text = normalize_output(text)
     if len(text) <= MAX_OUTPUT_CHARS:
         return text
     return text[:MAX_OUTPUT_CHARS] + f"\n… ({len(text)} karakter, kısaltıldı)"

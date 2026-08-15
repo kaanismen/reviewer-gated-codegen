@@ -213,6 +213,48 @@ def test_sonsuz_donguyu_test_kosucusu_da_yakalar(sandbox_workspace):
 # ==========================================================================
 
 
+def test_ayni_kod_ayni_cikti_uretir(sandbox_workspace):
+    """Kayıt/oynatmanın ön koşulu: aynı kod aynı metni üretmeli.
+
+    Bu tutmazsa denetleyiciye giden istek her koşuda farklı olur ve kaset
+    parmak izi asla eşleşmez. Temiz klon testinde tam olarak bu oldu:
+    çıktıdaki `duration_ms` değerleri her koşuda değişiyordu.
+    """
+    write(
+        sandbox_workspace,
+        logic__js="export const topla = (a, b) => a + b;",
+        logic_test__js="""
+            import { test } from 'node:test';
+            import assert from 'node:assert/strict';
+            import { topla } from './logic.js';
+            test('toplar', () => assert.equal(topla(2, 3), 5));
+        """,
+    )
+    runner = TestRunner(HIZLI)
+    ilk = runner.run(sandbox_workspace).test_sonucu.cikti
+    ikinci = runner.run(sandbox_workspace).test_sonucu.cikti
+    assert ilk == ikinci, "aynı kod iki koşuda farklı çıktı üretiyor"
+    assert "duration_ms" not in ilk
+
+
+def test_normalizasyon_gurultuyu_temizler():
+    from src.tools.test_runner import normalize_output
+
+    ham = (
+        "ok 1 - kazanir\n"
+        "  ---\n"
+        "  duration_ms: 1.064724\n"
+        "  ...\n"
+        "# duration_ms 74.818849\n"
+        "hata: /workspaces/20260815-103817-tic-tac-toe/logic.js:12\n"
+    )
+    temiz = normalize_output(ham)
+    assert "duration_ms" not in temiz
+    assert "20260815" not in temiz
+    assert "<workspace>/logic.js:12" in temiz
+    assert "ok 1 - kazanir" in temiz
+
+
 def test_tap_ozeti_ayristirilir():
     assert parse_tap("# tests 5\n# pass 4\n# fail 1\n") == (4, 1)
 

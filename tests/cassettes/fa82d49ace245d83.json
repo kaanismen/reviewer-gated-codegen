@@ -1,0 +1,29 @@
+{
+  "parmak_izi": "fa82d49ace245d83",
+  "kayit_zamani": "2026-08-15T16:46:10.069540+00:00",
+  "istek": {
+    "model": "claude-opus-5",
+    "max_tokens": 16000,
+    "system_sha256": "993e3e6079c7785b",
+    "messages": [
+      {
+        "rol": "user",
+        "icerik": "<<<KULLANICI_GOREVI>>>\nsatranc oyunu yaz, hamle gecerliligini kontrol etsin\n<<<KULLANICI_GOREVI_SON>>>"
+      }
+    ]
+  },
+  "yanit": {
+    "metin": "{\"oyun\":\"satranç\",\"uygulanabilirlik\":{\"karar\":\"UYGUN_DEGIL\",\"gerekce\":\"U2 ihlali: her taş türü için ayrı hareket kuralları, rok (kısa/uzun, taş oynamamış olma ve tehdit altındaki kareden geçmeme koşulları), en passant, piyon terfisi, şah tehdidi ve bağlı taş kontrolü, şah-mat ve pat tespiti özel durum tavanını (10) fazlasıyla aşıyor. Hamle geçerliliği tek başına saf fonksiyonla test edilebilse de (U3) kural karmaşıklığı kapsam dışı bırakıyor.\",\"ozel_durum_sayisi\":24,\"gerekli_ozellikler\":[\"taş bazlı hamle üretimi\",\"şah tehdidi tespiti\",\"bağlı taş (pin) kontrolü\",\"rok\",\"en passant\",\"piyon terfisi\",\"şah-mat tespiti\",\"pat tespiti\",\"elli hamle ve üç tekrar kuralı\"],\"gercek_zamanli\":false,\"harici_varlik_gerekli\":false},\"adimlar\":[],\"kabul_kriterleri\":[],\"dosyalar\":[]}",
+    "model": "claude-opus-5",
+    "saglayici": "anthropic",
+    "durdurma_nedeni": "end_turn",
+    "kullanim": {
+      "token_girdi": 72,
+      "token_cikti": 423,
+      "onbellek_yazma": 0,
+      "onbellek_okuma": 6076,
+      "maliyet_usd": "0.01397",
+      "fiyat_bilinen": true
+    }
+  }
+}
