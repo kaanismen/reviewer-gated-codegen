@@ -28,6 +28,7 @@ from src.llm.provider import (
     Redactor,
 )
 from src.security import secret_scan
+from src.security.input_guard import DELIMITER_CLOSE, DELIMITER_OPEN
 
 
 class ReplayProvider(LlmProvider):
@@ -54,6 +55,30 @@ class ReplayProvider(LlmProvider):
         if not self.cassettes_dir.is_dir():
             return 0
         return len(list(self.cassettes_dir.glob("*.json")))
+
+    def recorded_tasks(self) -> list[str]:
+        """Kasetlerden oynatılabilir görev metinlerini çıkarır.
+
+        Anahtarsız modda kullanıcı hangi görevin kayıtlı olduğunu bilemez;
+        rastgele bir metin yazarsa `CassetteMissing` alır. Bu, "anahtarsız
+        çalışabilirlik" iddiasını kullanıcı için bir tuzağa çevirir.
+        Planlayıcı kasetlerindeki veri bloğu görev metnini taşır.
+        """
+        if not self.cassettes_dir.is_dir():
+            return []
+        tasks: set[str] = set()
+        for path in self.cassettes_dir.glob("*.json"):
+            try:
+                data = json.loads(path.read_text(encoding="utf-8"))
+            except (json.JSONDecodeError, OSError):
+                continue
+            for message in (data.get("istek") or {}).get("messages") or []:
+                metin = str(message.get("icerik") or "")
+                if DELIMITER_OPEN in metin and DELIMITER_CLOSE in metin:
+                    gorev = metin.split(DELIMITER_OPEN, 1)[1].split(DELIMITER_CLOSE, 1)[0]
+                    if gorev.strip():
+                        tasks.add(gorev.strip())
+        return sorted(tasks)
 
     def complete(self, request: LlmRequest) -> LlmResponse:
         path = self.path_for(request)

@@ -926,6 +926,60 @@ Dürüst ifade: kesilme aralıklı bir olay (modelin o anki ayrıntı düzeyine 
 
 Kazanılan kesin şey şu: aynı hata bir daha olursa artık `HATA` ile değil, adı konmuş bir uyarı ve bir yeniden denemeyle karşılanacak.
 
+### Kayıt 4.6 — Temiz klon testi: en büyük iddia kırıkmış
+
+**Tetikleyen:** "şimdiki adımımız nedir" sorusu. AI, en riskli doğrulanmamış iddianın K5/KK-11 olduğunu ("eğitmenin temiz makinesinde `docker compose up` çalışır") tespit edip sıfırdan klon testi önerdi ve yaptı.
+
+**Karar sahibi:** AI (sıralama), insan (izin).
+
+### Kurulum geçti, kullanım geçmedi
+
+Temiz klon açıldı: replay moduna düştü, 10 kaset göründü, `node` ve `runner` yerindeydi. Buraya kadar iddia doğruydu. Sonra bir görev çalıştırıldı:
+
+| Adım | Sonuç |
+|---|---|
+| Planlayıcı kaseti | ✅ tuttu |
+| Uygulayıcı kaseti | ✅ tuttu, dosyalar yazıldı |
+| `node --test` | ✅ **12 test gerçekten koştu ve geçti** |
+| Denetleyici kaseti | ❌ `CassetteMissing` → `HATA` |
+
+Sebep: denetleyicinin girdisi test çıktısını içeriyor ve o çıktı `duration_ms` değerleri taşıyor. Her koşuda farklı süre → farklı istek → farklı parmak izi → **kaset asla tutmaz.**
+
+Yani "anahtarsız çalışabilirlik" (KK-12) iddiası **denetleyici adımında baştan beri kırıkmış.** Sistem üç gündür bu iddiayı belgeliyordu ve hiç sınanmamıştı.
+
+### Neden hiçbir test yakalamadı
+
+`test_loop.py` uçtan uca çalışıyor ama **senaryolu sahte sağlayıcı** kullanıyor, kaset kullanmıyor. Sahte sağlayıcı isteğin içeriğine bakmaz, sırayla yanıt döndürür — dolayısıyla parmak izi eşleşmesi hiç devreye girmez.
+
+Bu, projedeki en öğretici test boşluğu: **mekanizmanın kendisi test edilmiş, mekanizmanın ön koşulu test edilmemişti.** Kayıt/oynatma yalnızca girdi belirlenimliyse çalışır ve bu ön koşulu hiçbir test iddia etmiyordu.
+
+Eklenen test doğrudan ön koşulu sınıyor: `test_ayni_kod_ayni_cikti_uretir` — aynı kod iki koşuda aynı metni üretmeli.
+
+### Düzeltme ve ikinci hata
+
+`normalize_output()` eklendi: süre satırları ve göreve özgü workspace yolu temizlenir; **dosya adı ve satır numarası korunur**, çünkü denetleyici için anlamlılar.
+
+Ardından kasetler yeniden kaydedildi — ve burada **ikinci bir hata yapıldı**: kayıt `docker compose up -d` ile alındı, yani imaj yeniden derlenmeden. Test paketi `.:/app` bağladığı için yeni kodu görüyordu ama uygulama servisi eski imajı çalıştırıyordu. Kasetler yine süre değerleriyle kaydedildi ve temiz klon yine düştü.
+
+Bu, Kayıt 4.2'deki örüntünün bir başka yüzü: **doğru düzeltme, yanlış ortamda doğrulandı.** İmaj derlenip yalnızca denetleyici adımı yeniden kaydedildi (planlayıcı ve uygulayıcı kasetten geldi, ücretsiz).
+
+### Kullanıcı için kalan tuzak
+
+Anahtarsız mod çalışsa bile kullanıcı **hangi görevin kayıtlı olduğunu bilemez**; rastgele bir metin yazarsa `CassetteMissing` alır. Bu, iddiayı teknik olarak doğru ama pratikte kullanılamaz kılardı.
+
+Sağlık ucuna `kayitli_senaryolar` eklendi (kasetlerdeki veri bloğundan çıkarılıyor) ve arayüz anahtarsız modda bunları tıklanabilir gösteriyor.
+
+### Sonuç — iddia artık kanıtlı
+
+Temiz klon, API anahtarı olmadan:
+
+| Senaryo | Sonuç |
+|---|---|
+| tic-tac-toe | `KABUL_EDILDI`, oynanabilir |
+| satranç | `KAPSAM_DISI`, gerekçeli ret |
+
+Demo bu klondan, hiç para harcamadan çekilebilir.
+
 ---
 
 # Karar kütüğü — tam liste

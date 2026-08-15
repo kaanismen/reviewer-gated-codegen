@@ -120,6 +120,9 @@ def health() -> dict[str, object]:
         "roller": [r.as_dict() for r in roller],
         "anahtarlar": [f.as_dict() for f in vault.fingerprints()],
         "kaset_sayisi": ReplayProvider(CASSETTES_DIR).count(),
+        # Anahtarsız modda kullanıcı hangi görevin oynatılabilir olduğunu
+        # bilmeli; bilmezse rastgele bir metin yazıp hata alır.
+        "kayitli_senaryolar": ReplayProvider(CASSETTES_DIR).recorded_tasks(),
         "kayit_modu": factory.recording_enabled(),
         "python": platform.python_version(),
         "node": node,

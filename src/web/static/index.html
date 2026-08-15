@@ -104,6 +104,7 @@
                 maxlength="2000"></textarea>
       <button type="submit" id="taskGo">üret</button>
     </form>
+    <div id="senaryolar" hidden></div>
     <p class="note" id="taskNote">Ölçütü geçen her oyun üretilebilir — tic-tac-toe,
       connect-4, snake, pong, 2048… Kural karmaşıklığı fazla olanlar (satranç)
       gerekçeyle reddedilir.</p>
@@ -198,6 +199,24 @@ function saglikYenile({ roller = true } = {}) {
     if (roller) {
       const anahtarlar = Object.fromEntries(h.anahtarlar.map(a => [a.rol, a.maske]));
       rolleriCiz(h.roller, anahtarlar);
+    }
+
+    // Anahtarsız modda hangi görevlerin oynatılabileceğini göster.
+    // Bilinmezse kullanıcı rastgele bir metin yazar ve hata alır.
+    const kutu = $("senaryolar");
+    if (h.cevrimdisi_mod && (h.kayitli_senaryolar || []).length) {
+      kutu.hidden = false;
+      kutu.innerHTML =
+        `<p class="note" style="margin:10px 0 6px">Anahtar girilmedi —
+          <b>kayıtlı senaryo</b> modundasınız. Aşağıdakiler API anahtarı
+          olmadan uçtan uca çalışır; birine tıklayın:</p>` +
+        h.kayitli_senaryolar.map(s =>
+          `<button type="button" class="ghost senaryo" style="margin:3px 4px 3px 0"
+             data-gorev="${esc(s)}">${esc(s)}</button>`).join("");
+      kutu.querySelectorAll(".senaryo").forEach(b =>
+        b.addEventListener("click", () => { $("taskText").value = b.dataset.gorev; }));
+    } else {
+      kutu.hidden = true;
     }
 
     $("keyNote").textContent =

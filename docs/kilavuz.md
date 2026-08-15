@@ -43,11 +43,18 @@ docker compose down
 
 ## 2. API anahtarı olmadan deneme
 
-**Anahtar girmek zorunda değilsiniz.** `.env` dosyası yoksa sistem `replay` moduyla açılır ve önceden kaydedilmiş senaryoları oynatır. Ayarlar panelinde her rolün yanında `replay` yazar ve nedeni görünür:
+**Anahtar girmek zorunda değilsiniz.** `.env` dosyası yoksa sistem `replay` moduyla açılır ve önceden kaydedilmiş senaryoları oynatır.
 
-> *"hiçbir API anahtarı tanımlı değil; kayıtlı senaryolar oynatılacak"*
+Görev kutusunun altında **kayıtlı senaryolar** düğme olarak listelenir. Birine tıklayın, metin kutuya dolar, **üret**e basın:
 
-Bu modda görev başlatabilir, kayıtlı bir oyunun uçtan uca üretilişini izleyebilir ve sonucu oynayabilirsiniz — hiçbir ücret ödemeden.
+| Senaryo | Ne gösterir |
+|---|---|
+| `tic tac toe oyunu yaz, iki oyuncu sirayla oynasin` | Mutlu senaryo — üç agent, testler koşar, oyun oynanabilir |
+| `satranc oyunu yaz, hamle gecerliligini kontrol etsin` | Hata senaryosu — uygulanabilirlik ölçütü gerekçeli ret verir |
+
+Bu modda **testler gerçekten koşar** ve oyun gerçekten üretilir; yalnızca LLM yanıtları kayıttan gelir. Hiçbir ücret ödenmez.
+
+> **Kayıtlı olmayan bir metin yazarsanız** sistem `CassetteMissing` hatası verir. Bu bir arıza değil, bilinçli bir davranıştır: replay modu sahte bir yanıt uydurmaz. Kendi görevlerinizi çalıştırmak için §3'teki gibi bir API anahtarı girin.
 
 ---
 

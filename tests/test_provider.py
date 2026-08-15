@@ -212,6 +212,31 @@ def test_bos_kaset_dizini_sifir_sayar(tmp_path):
     assert ReplayProvider(tmp_path / "yok").count() == 0
 
 
+def test_kayitli_gorev_metinleri_kasetlerden_cikarilir(tmp_path):
+    """Anahtarsız modda kullanıcı hangi görevin oynatılabilir olduğunu
+    bilmeli; bilmezse rastgele bir metin yazıp hata alır."""
+    from src.security.input_guard import as_data_block
+
+    inner = FakeProvider()
+    provider = ReplayProvider(tmp_path, inner=inner)
+    provider.complete(make_request(
+        messages=(Message(rol="user", icerik=as_data_block("snake oyunu yaz")),)
+    ))
+    provider.complete(make_request(
+        messages=(Message(rol="user", icerik=as_data_block("pong oyunu yaz")),)
+    ))
+    assert ReplayProvider(tmp_path).recorded_tasks() == [
+        "pong oyunu yaz", "snake oyunu yaz"
+    ]
+
+
+def test_veri_blogu_olmayan_kaset_senaryo_uretmez(tmp_path):
+    """Uygulayıcı ve denetleyici kasetlerinde görev metni yoktur."""
+    inner = FakeProvider()
+    ReplayProvider(tmp_path, inner=inner).complete(make_request())
+    assert ReplayProvider(tmp_path).recorded_tasks() == []
+
+
 # ==========================================================================
 # Rol → sağlayıcı çözümlemesi
 # ==========================================================================
