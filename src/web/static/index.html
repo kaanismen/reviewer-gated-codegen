@@ -66,7 +66,13 @@
   .badge { font-size:11px; padding:2px 8px; border-radius:20px; border:1px solid var(--line); color:var(--muted); }
   .badge.ok { color:var(--ok); border-color:#245c3a; }
   .badge.warn { color:var(--warn); border-color:#6b5310; }
-  iframe { width:100%; height:520px; border:1px solid var(--line); border-radius:8px; background:#fff; }
+  iframe { width:100%; height:520px; border:1px solid var(--line); border-radius:8px;
+           background:#fff; display:block; }
+  iframe:focus { outline:2px solid var(--accent); outline-offset:2px; }
+  iframe:fullscreen { height:100%; border:0; border-radius:0; }
+  .player-head { display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+  .player-head h2 { flex:1; }
+  .player-head button { font-size:13px; padding:6px 12px; }
   details.settings summary { cursor:pointer; color:var(--muted); font-size:12px;
     text-transform:uppercase; letter-spacing:.08em; font-weight:600; }
   details.settings[open] summary { margin-bottom:14px; }
@@ -99,10 +105,19 @@
   </div>
 
   <div class="panel" id="playerPanel" hidden>
-    <h2 id="playerTitle">Oyun</h2>
+    <div class="player-head">
+      <h2 id="playerTitle" style="margin:0">Oyun</h2>
+      <button type="button" id="playerFull">tam ekran</button>
+      <button type="button" class="ghost" id="playerTab">yeni sekmede aç</button>
+    </div>
     <!-- allow-same-origin BİLİNÇLİ OLARAK YOK: verilseydi oyun ana sayfayı
-         script'leyip onun ağ erişimiyle CSP'yi baypas edebilirdi. -->
-    <iframe id="player" title="Üretilen oyun" sandbox="allow-scripts"></iframe>
+         script'leyip onun ağ erişimiyle CSP'yi baypas edebilirdi.
+         allow="fullscreen": tam ekran sandbox'ı KORUYARAK çalışır. -->
+    <iframe id="player" title="Üretilen oyun" sandbox="allow-scripts"
+            allow="fullscreen" tabindex="0"></iframe>
+    <p class="note">Ok tuşlarıyla oynanan oyunlarda önce oyun alanına tıklayın —
+      odak oyunda değilken tuşlar sayfayı kaydırır. Tam ekran bu sorunu
+      tamamen ortadan kaldırır.</p>
   </div>
 
   <div class="panel">
@@ -186,12 +201,33 @@ const DURUM_ETIKET = {
   HATA:         ["warn", "hata"],
 };
 
+let aktifOyunYolu = "";
+
 function oyunOynat(id, ad) {
+  aktifOyunYolu = `/oyun/${encodeURIComponent(id)}/game.html`;
   $("playerPanel").hidden = false;
   $("playerTitle").textContent = ad;
-  $("player").src = `/oyun/${encodeURIComponent(id)}/game.html`;
+  const cerceve = $("player");
+  cerceve.src = aktifOyunYolu;
+  // Odak oyunda değilken ok tuşları ana sayfayı kaydırır. Yükleme biter
+  // bitmez odak oyuna verilir; kullanıcı tıklamak zorunda kalmasın.
+  cerceve.addEventListener("load", () => cerceve.focus(), { once: true });
   $("playerPanel").scrollIntoView({ behavior: "smooth" });
 }
+
+// Tam ekran sandbox'ı KORUR — oyun hâlâ allow-scripts kısıtı ve CSP altında.
+$("playerFull").addEventListener("click", () => {
+  const cerceve = $("player");
+  (cerceve.requestFullscreen ? cerceve.requestFullscreen() : Promise.reject())
+    .then(() => cerceve.focus())
+    .catch(() => { if (aktifOyunYolu) window.open(aktifOyunYolu, "_blank", "noopener"); });
+});
+
+// Yeni sekmede oyun iframe sandbox'ı OLMADAN çalışır; koruma yalnızca
+// sunucunun gönderdiği CSP'dir (ağ çıkışı ve form gönderimi kapalı).
+$("playerTab").addEventListener("click", () => {
+  if (aktifOyunYolu) window.open(aktifOyunYolu, "_blank", "noopener");
+});
 
 function kutuphaneYenile() {
   return fetch("/api/oyunlar").then(r => r.json()).then(d => {

@@ -347,7 +347,7 @@ Tavanların yerinde olup olmadığı ancak gerçek tüketim bilinince anlaşıl�
 | satranç | `KAPSAM_DISI` | 1 | 74 | 1.040 | **$0.012** | ~15 sn |
 | snake *(yalnızca OpenAI, `gpt-5.4`)* | `KABUL_EDILDI` | 1 | 13.141 | 5.126 | ≤ $0.388 ¹ | ~40 sn |
 
-¹ **Üst sınır.** `gpt-5.4` fiyatı `pricing.py` tablosunda yok; maliyet en pahalı bilinen tarifeden hesaplandı. Transkripte bu durumu bildiren bir sistem mesajı yazılır (`maliyet_ust_sinir`) — rakam kesin bir değermiş gibi sunulmaz.
+¹ **Üst sınır.** `gpt-5.4` fiyatı `pricing.py` tablosunda yok; maliyet en pahalı bilinen tarifeden hesaplandı. Transkripte bu durumu bildiren bir sistem mesajı yazılır (`maliyet_ust_sinir`) — rakam kesin bir değermiş gibi sunulmaz. **Kullanıcı raporuna göre gerçek maliyet ≈ $0,10**, yani üst sınır yaklaşık **4 kat** yüksek. Tahmin bilinçli olarak yukarı yuvarlanıyor (§8.5); tabloya tahminî bir fiyat **eklenmedi**, çünkü harcama tavanını besleyen bir tabloya doğrulanmamış sayı girmek bu projenin baştan beri kaçındığı hata olurdu.
 
 **Sağlayıcı değişimi tek satır yapılandırma çıktı.** `LLM_PROVIDER=openai` + `MODEL_*=gpt-5.4` ile üç rol de OpenAI'a geçti; kodda hiçbir değişiklik gerekmedi. §8.2'deki "orkestratör hangi sağlayıcının çalıştığını bilmez" iddiası böylece ölçülmüş oldu.
 

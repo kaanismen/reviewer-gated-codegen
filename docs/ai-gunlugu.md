@@ -706,6 +706,10 @@ Girdi token farkı (7.377 → 13.141) prompt önbelleğinden geliyor: Anthropic 
 
 Aynı sayı iki farklı işi görüyordu ve birinde doğru, diğerinde yanıltıcıydı. Ayrıştırıldı: `Usage.fiyat_bilinen` eklendi ve fiyatı bilinmeyen model kullanıldığında transkripte `maliyet_ust_sinir` sistem mesajı yazılıyor. Tahmin değişmedi, **tahmin olduğu görünür oldu.**
 
+**Sonradan doğrulama (insan raporu):** koşunun gerçek maliyeti ≈ **$0,10**, yani üst sınır (~$0,388) **yaklaşık 4 kat** yüksekmiş. Muhafazakârlık işini gördü — tavan aşılmadı, koşu yarıda kesilmedi.
+
+`pricing.py`'ye tahminî bir `gpt-5.4` fiyatı **eklenmedi.** Rakam yaklaşık ("sanırım") ve fatura henüz yansımamıştı; toplam maliyetten geriye doğru token fiyatı türetmek, doğrulanmamış bir sayıyı harcama tavanını besleyen bir tabloya yazmak olurdu. Bu, projenin Kayıt 1.8'den beri kaçındığı hatanın aynısıdır: makul görünen, doğru terminolojiyle yazılmış, ama ölçülmemiş bir değer. Fiyat kesinleşirse tabloya girer; o zamana kadar üst sınır ve uyarı mesajı yerinde kalır.
+
 ### Yakalanan yapılandırma hatası
 
 İlk denemede sağlayıcı `openai`'a geçti ama model `claude-opus-5` kaldı — `MODEL_*` değişkenleri `docker-compose.yml`'de geçirilmiyordu. Koşu başlatılsaydı OpenAI'a Claude model kimliği gidecek ve anlamsız bir hata alınacaktı. Sağlık ucundaki rol tablosu bunu koşudan önce gösterdi; geçişler eklendi.
@@ -714,6 +718,46 @@ Küçük bir olay ama sağlık ucunun neden **modeli de** raporladığını doğ
 
 ---
 
+### Kayıt 4.1 — Faz 6 belgeleri ve ok tuşu sorunu
+
+**Prompt:**
+
+> snake inanılmaz iyi olmuş. OpenAI sanırım totalde 0.1 dolar harcadı ama hala total bakiyem 3.71
+
+> bir tek ok tuşlarıyla oynatınca bütün uygulamada da aşağı yukarı gidiyor. Bu agentların yazdığıyla pek alakalı olduğunu sanmıyorum uygulamalık bir durum. Belki oyunları bir pop-up la ya da subdirectoryle daha full screene yakın çalıştırabiliriz
+
+**AI çıktısı — özet:**
+
+`docs/teknik.md` ve `docs/kilavuz.md` yazıldı — zorunlu beş teslimden ikisi. Ayrıca ok tuşu sorunu düzeltildi.
+
+**Karar sahibi:** İnsan — hem maliyet doğrulaması hem hata raporu hem çözüm önerisi (tam ekran / ayrı pencere) ondan geldi.
+
+### Maliyet doğrulaması: tahmin 4 kat şişikmiş
+
+OpenAI koşusunun gerçek maliyeti ≈ **$0,10**; sistem ≤$0,388 raporlamıştı. Muhafazakârlık işini gördü, tavan aşılmadı.
+
+`pricing.py`'ye tahminî bir `gpt-5.4` fiyatı **eklenmedi** — gerekçe Kayıt 3.4'te.
+
+### Ok tuşu teşhisi: kullanıcı doğru söyledi
+
+"Uygulamalık bir durum" tespiti isabetli. Sebep: iframe odakta değilken ok tuşları ana belgeye gidiyor ve sayfayı kaydırıyor. Üretilen oyunun kodu bunu düzeltemez — odak onun dışında.
+
+Üç katmanlı düzeltme: yükleme biter bitmez iframe'e odak verildi, `tabindex` ve görünür odak halkası eklendi, **tam ekran** ve **yeni sekmede aç** düğmeleri kondu.
+
+**Güvenlik takası açıkça yazıldı.** Tam ekran iframe sandbox'ını **korur** — oyun hâlâ `allow-scripts` kısıtı ve CSP altında. Yeni sekme ise sandbox'sız çalışır; koruma yalnızca sunucunun gönderdiği CSP'dir (ağ çıkışı ve form gönderimi kapalı). Bu yüzden birincil düğme tam ekran, ikincisi yedek.
+
+**Prompt tarafına düşen pay:** üretilen oyunun ok tuşlarında `preventDefault()` çağırması da beklenirdi. Bu uygulayıcı prompt'una eklenebilecek bir madde ve kural K4 gereği insana ait — `analiz.md` A5'in yanına not düşüldü.
+
+### Belgelerde bilinçli bir seçim
+
+`kilavuz.md` §9, sistemin garantisinin dar olduğunu **kullanıcıya doğrudan söylüyor**: "KABUL_EDILDI testler geçti demektir, oyun her açıdan doğru demek değildir. Üretilen oyunu birkaç dakika oynayın."
+
+Bir kullanım kılavuzunun ürünü övmesi beklenir; burada tersi yapıldı çünkü connect-4 olayı bunun gerçek bir risk olduğunu gösterdi. Kılavuz sınırı gizleseydi, kullanıcı aynı hatayı yaşayıp sisteme güvenini kaybederdi.
+
+**Ekran görüntüleri eksik.** Kılavuzda dört yer `📸` ile işaretli; bunları AI üretemez, insanın alması gerekiyor.
+
+---
+
 ## Sonraki kayıt
 
-Kayıt 4.1'de Faz 6 (teknik doküman, kullanım kılavuzu, demo) işlenecek.
+Kayıt 4.2'de demo hazırlığı ve teslim paketi işlenecek.
