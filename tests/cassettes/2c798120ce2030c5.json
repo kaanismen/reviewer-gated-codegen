@@ -1,0 +1,28 @@
+{
+  "parmak_izi": "2c798120ce2030c5",
+  "kayit_zamani": "2026-08-15T10:40:43.148961+00:00",
+  "istek": {
+    "model": "claude-opus-5",
+    "max_tokens": 16000,
+    "system_sha256": "993e3e6079c7785b",
+    "messages": [
+      {
+        "rol": "user",
+        "icerik": "<<<KULLANICI_GOREVI>>>\nsatranc oyunu yaz, hamle gecerliligini kontrol etsin ve sah mat tespiti yapsin\n<<<KULLANICI_GOREVI_SON>>>"
+      }
+    ]
+  },
+  "yanit": {
+    "metin": "{\"oyun\": \"satranç\", \"uygulanabilirlik\": {\"karar\": \"UYGUN_DEGIL\", \"gerekce\": \"U2 ihlali: altı taş türü için ayrı hamle üretimi, rok (kısa/uzun, hak kaybı, geçilen kare tehdidi), en passant, piyon terfisi, şah tehdidi altında bağlı taş kısıtı, şah/mat ve pat tespiti özel durum tavanını (10) fazlasıyla aşıyor.\", \"ozel_durum_sayisi\": 24, \"gerekli_ozellikler\": [\"taş bazlı hamle üretimi\", \"şah tehdidi tespiti\", \"rok\", \"en passant\", \"piyon terfisi\", \"şah/mat tespiti\", \"pat tespiti\"], \"gercek_zamanli\": false, \"harici_varlik_gerekli\": false}, \"adimlar\": [], \"kabul_kriterleri\": [], \"dosyalar\": []}",
+    "model": "claude-opus-5",
+    "saglayici": "anthropic",
+    "durdurma_nedeni": "end_turn",
+    "kullanim": {
+      "token_girdi": 86,
+      "token_cikti": 330,
+      "onbellek_yazma": 0,
+      "onbellek_okuma": 6076,
+      "maliyet_usd": "0.01172"
+    }
+  }
+}

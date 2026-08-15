@@ -168,15 +168,17 @@ Rubrikteki "denetim raporu" gereksinimi için, bu aşamada AI çıktısının g�
 | Puanlama yüzdeleri | Doğrulandı | Ağırlıkların toplamı %100 olarak kontrol edildi |
 | "Rubrik e-ticaret düşünülerek yazılmış" çıkarımı | **Yorum, kanıt değil** | Sunumdaki test senaryosu örneklerine dayanan bir çıkarım; eğitim koordinasyonuna doğrulatılmadı. Karar üzerinde etkisi olmadı (öneri zaten reddedildi) |
 | LLM fiyatlandırması | Güvenilir | Hafızadan değil, güncel fiyat referansından alındı |
-| Token tahminleri (30k girdi / 12k çıktı) | **Tahmin** | Gerçek koşularla ölçülecek; ilk uçtan uca oyun üretiminden sonra bu satır güncellenecek |
-| "Satranç LLM için çok zor" iddiası | **Test edilmedi** | Kapsam dışı bırakma kararı bu iddiaya dayanıyor. 3. günde hata senaryosu demosu olarak bilinçli denenerek doğrulanacak — böylece iddia kanıta dönüşür |
+| Token tahminleri (30k girdi / 12k çıktı) | ✅ **Ölçüldü — tahmin 4 kat yüksekti** | Gerçek: tic-tac-toe **7.377 girdi / 6.304 çıktı**, connect-4 benzer. Tahmin muhafazakârdı; prompt önbelleği de payı düşürdü (planlayıcının ücretli girdisi 74 token'a indi) |
+| Oyun başına maliyet ($0.18–0.45 tahmini) | ✅ **Ölçüldü — tahmin doğru bandın üstünde** | tic-tac-toe **$0.221**, connect-4 **$0.179**, satranç reddi **$0.012**. Tahmin bandının alt ucu tuttu |
+| "Satranç LLM için çok zor" iddiası | ✅ **Kanıta dönüştü** (15.08) | Sistem satrancı `KAPSAM_DISI` ile reddetti ve **24 özel durum** sayarak gerekçelendirdi: altı taş türü için hamle üretimi, rok (kısa/uzun, hak kaybı, geçilen kare tehdidi), en passant, terfi, bağlı taş kısıtı, şah/mat, pat. İddia artık bir tahmin değil, sistemin ürettiği ölçüm |
+| Uygulanabilirlik ölçütünün listeden üstün olduğu | ✅ **Kanıtlandı** (15.08) | **connect-4** — eski dört oyunluk listede olmayan bir oyun — tek turda üretildi, 9 test geçti, oynanabilir. Ölçüt hem açtı hem kapattı: connect-4 geçti, satranç geçemedi |
 | `node --test`'in bağımlılıksız çalıştığı | ✅ **Doğrulandı** (14.08, Faz 0) | İmajda `runner` kullanıcısı olarak 2 test koşuldu, ikisi de geçti. `npm` imajda **yok** — bağımlılıksızlık iddiası artık imaj düzeyinde zorlanıyor, sadece beyan değil |
 | Statik içe aktarma denetiminin yeterliliği | **Desen tabanlı — teorik olarak atlatılabilir** | Dize birleştirmeyle modül adı üreten gizlenmiş kod denetimi aşabilir. Negatif testlerle sınanacak; atlatılsa bile ayrıcalık düşürme, rlimit ve konteyner sınırı devrede kalır (tek katman değil, son katman delinir) |
 | rlimit'lerin Docker Desktop altında uygulandığı | ⚠️ **Ölçüldü — kısmen yanlış çıktı** | `RLIMIT_CPU`, `RLIMIT_FSIZE`, `RLIMIT_NPROC` ve ayrıcalık düşürme doğrulandı. Ancak **`RLIMIT_AS` seçimi hatalıydı**: 512 MB'de meşru kod bile çöküyor. `RLIMIT_DATA`ya çevrildi. Ölçüm: `tests/manual/rlimit_olcumu.py`, ayrıntı Kayıt 1.8 |
 | `docker compose up` eğitmen makinesinde çalışır | ✅ **Doğrulandı** (14.08, Faz 0) | Temiz derleme 464 MB imaj üretti, `.env` yokken açıldı, sağlık ucu yeşil |
 | Oyunun iframe'de CSP altında açıldığı | ✅ **Doğrulandı** (14.08, insan tarafından) | Tarayıcıda açıldı, oyun `kazanan: X` çıktısını verdi. `sandbox="allow-scripts"` opak kaynağına rağmen `logic.js` yüklendi — CSP'ye sunucu kaynağının açıkça yazılması işe yaradı. Doğrulamayı AI değil **insan** yaptı: tarayıcı davranışı süreç içinden ölçülemiyordu |
 
-**Açık risk:** Tabloda "tahmin" ve "test edilmedi" işaretli satırlar henüz doğrulanmamış AI çıktısıdır. Faz 0 üç satırı kapattı ve bir tanesinin **yanlış olduğunu** ortaya çıkardı. Kalan açık maddeler: token tahminleri, "satranç çok zor" iddiası, statik denetimin atlatılabilirliği.
+**Açık risk:** Tabloda "tahmin" ve "test edilmedi" işaretli satırlar henüz doğrulanmamış AI çıktısıdır. Faz 0 üç satırı kapattı ve birinin **yanlış olduğunu** ortaya çıkardı; Faz 4'ün ilk gerçek koşuları dört satırı daha kapattı. **Kalan tek açık madde: statik denetimin gizlenmiş kodla atlatılabilirliği (S2)** — bu bilinçli bir sınırdır ve kapatılmayacaktır.
 
 ---
 
@@ -556,6 +558,57 @@ Düzeltme **uç noktada değil kasa katmanında** yapıldı (`KeyVault.set` art�
 
 ---
 
+### Kayıt 3.2 — Faz 4: sistem ilk kez gerçekten çalıştı
+
+**Prompt:**
+
+> anthropic ve openAI keyleri girdim. Anthropicte 4.93 dolar, OpenAI da 3.71 dolar var. Sen denediğinde ben sana maliyetleri rahatlıkla söyleyebilirim.
+
+**AI çıktısı — özet:**
+
+Faz 4 tamamlandı: gerçek MCP sunucusu (stdio, JSON-RPC 2.0), üç agent, ana döngü, görev yürütücüsü ve HTTP uçları. **352 test.** Ardından **üç gerçek koşu** yapıldı.
+
+**Karar sahibi:** İnsan — anahtarları sağladı ve harcamaya izin verdi. Maliyet tavanı $1.00'dan **$0.40'a** çekildi: bakiye $4.93 idi, varsayılan tavan tek koşuda bakiyenin %20'sini riske atıyordu.
+
+### Gerçek koşu sonuçları (15.08.2026)
+
+| Görev | Sonuç | Tur | Süre | Maliyet |
+|---|---|---|---|---|
+| tic-tac-toe | `KABUL_EDILDI` | 1 | ~85 sn | **$0.221** |
+| connect-4 | `KABUL_EDILDI` | 1 | ~90 sn | **$0.179** |
+| satranç | `KAPSAM_DISI` | 1 | ~15 sn | **$0.012** |
+
+**Toplam harcama: $0.41.** Üretilen oyunlar sırasıyla 12 ve 9 test geçirdi; testler sandbox'ta ayrıcalıksız kullanıcı olarak bağımsızca yeniden koşuldu.
+
+### Denetim tablosundan kapanan dört satır
+
+1. **Token tahmini 4 kat yüksekti.** 30.000 girdi / 12.000 çıktı tahmin edilmişti; gerçek 7.377 / 6.304. Tahmin muhafazakâr yöndeydi, yani zararsız — ama yine de tahmindi ve öyle işaretlenmişti.
+2. **Maliyet tahmini tuttu.** $0.18–0.45 bandı öngörülmüştü; gerçek $0.179–0.221.
+3. **"Satranç çok zor" iddiası kanıta dönüştü.** Sistem satrancı reddetti ve **24 özel durum** sayarak gerekçelendirdi. İddia artık AI'ın tahmini değil, sistemin ürettiği ölçüm.
+4. **Uygulanabilirlik ölçütü listeden üstün çıktı.** connect-4 — eski dört oyunluk listede **olmayan** bir oyun — tek turda üretildi ve oynanabilir oldu. Ölçüt hem açtı hem kapattı.
+
+Dördüncüsü özellikle önemli: bu değişikliği öneren insandı (Kayıt 1.10), AI enum'u yazmış ve sorgulamamıştı. Öneri artık çalışan bir kanıta sahip.
+
+### Gözlem — prompt önbelleği beklenenden çok işe yaradı
+
+Planlayıcının **ücretli girdi token'ı 74**. Sistem promptu (~2.500 token) önbelleğe yazıldı ve ücretlendirme oradan yapıldı. İkinci ve sonraki koşularda okuma katsayısı 0.1x olduğu için planlayıcı çağrısının girdi maliyeti neredeyse sıfırlanacak.
+
+### Tasarım kararı — MCP gerçekten yazıldı
+
+Sunumun "en az bir MCP çağrısı" şartı, bir Python fonksiyonuna "MCP" adı vererek değil, **ayrı süreçte konuşan bir stdio sunucusuyla** karşılandı: `initialize` el sıkışması, `tools/list`, `tools/call`. Kapsam dışı yöntemler (`resources/*`, `prompts/*`) dürüstçe `-32601` döndürüyor ve bunun tam bir MCP sunucusu **olmadığı** dosyanın başında yazılı.
+
+Yol koruması bilinçli olarak **sunucunun içine** kondu, istemciye değil: uygulayıcı agent `../../etc/passwd` isterse reddeden taraf sunucu olmalı. Güvenlik kontrolü çağırana güvenmemelidir.
+
+### Tasarım kararı — uygulayıcının çıktısı ile kaydı ayrıldı
+
+LLM `{"dosyalar": {...}}` döndürüyor; transkripte yazılan `ImplementerContent` ise dosyalar **MCP üzerinden yazıldıktan sonra** üretiliyor: hangi yol, kaç bayt, hangi hash, hangi araç çağrıları. Transkript "model ne dedi"yi değil **"fiilen ne oldu"yu** kaydediyor. Model bir dosya döndürüp yazım başarısız olsaydı, kayıt bunu gösterirdi.
+
+### Denetleyicinin beyanı hâlâ kullanılmıyor
+
+§7.4'teki orkestratör kuralı uygulandı: denetleyicinin döndürdüğü `test_sonucu`, `TestRunner`ın ölçtüğü değerlerle **değiştiriliyor**. Bir testte denetleyici `gecen: 99, kalan: 0` beyan etti; kayda geçen değer ölçülen değer oldu ve karar RED'e çevrildi.
+
+---
+
 ## Sonraki kayıt
 
-Kayıt 3.2'de Faz 4 (agent'lar, ana döngü ve ilk uçtan uca oyun) işlenecek.
+Kayıt 3.3'te Faz 5 (canlı transkript arayüzü) işlenecek.

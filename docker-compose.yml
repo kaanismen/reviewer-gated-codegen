@@ -20,7 +20,18 @@ services:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      # Kontrol limitleri (PROJECT.md §5) — boş bırakılırsa varsayılan.
+      # Demo sırasında hata senaryosunu ucuza göstermek için MAX_TUR=2
+      # gibi değerler buradan verilebilir.
+      MAX_TUR: ${MAX_TUR:-}
+      MAX_MALIYET_USD: ${MAX_MALIYET_USD:-}
+      MAX_TOKEN_TOPLAM: ${MAX_TOKEN_TOPLAM:-}
+      MAX_SURE_SN: ${MAX_SURE_SN:-}
+      # Gerçek çağrılar kasede yazılsın mı (tests/cassettes/)
+      LLM_KAYIT: ${LLM_KAYIT:-}
     volumes:
+      # Kayıt modunda üretilen kasetler hostta kalıcı olmalı.
+      - ./tests/cassettes:/app/tests/cassettes
       # Üretilen oyunlar konteyner kapansa da hosttan incelenebilir kalır.
       - ./workspaces:/workspaces
     extra_hosts:

@@ -243,7 +243,7 @@ Sabit bir oyun listesi, "başa çıkabileceğimiz karmaşıklık" için **kötü
 | FO-02 | İmaj boyutu | < 500 MB | ✅ 464 MB |
 | FO-03 | Otomatik test paketi süresi | < 60 sn | ✅ ~12 sn (264 test) |
 | FO-04 | Hiçbir otomatik test gerçek API çağrısı yapmaz | Kod incelemesi | ✅ |
-| FO-05 | Oyun başına maliyet | < $0.50 | ⬜ Faz 4'te ölçülecek |
+| FO-05 | Oyun başına maliyet | < $0.50 | ✅ **$0.179–0.221** (15.08 ölçümü) |
 | FO-06 | Sandbox zaman aşımı | 30 sn | ✅ Ölçüldü |
 | FO-07 | Sistem anahtarsız açılabilir | `.env` yokken çalışır | ✅ Doğrulandı |
 
@@ -253,7 +253,7 @@ Sabit bir oyun listesi, "başa çıkabileceğimiz karmaşıklık" için **kötü
 
 | # | Risk | Etki | Azaltıcı | Durum |
 |---|---|---|---|---|
-| R1 | LLM 5 tur içinde çalışan oyun üretemez | Çalışan ürün kalemi zedelenir | Kapsam ölçütü riskli oyunları baştan eler; bilinen-iyi oyunlarla demo | ⬜ Faz 4'te ölçülecek |
+| R1 | LLM 5 tur içinde çalışan oyun üretemez | Çalışan ürün kalemi zedelenir | Kapsam ölçütü riskli oyunları baştan eler | ✅ **Gerçekleşmedi** — tic-tac-toe ve connect-4 **tek turda** kabul edildi (15.08) |
 | R2 | Prompt ile şema birbirinden sapar | Sistem her turda şema hatası verir, sebep "LLM saçmalıyor" sanılır | `test_prompt_ornekleri.py` — prompt örnekleri şemaya karşı doğrulanır | ✅ Kapatıldı |
 | R3 | Denetleyici her şeyi kabul eder | Sistemin ana mekanizması anlamsızlaşır | Yapısal JSON karar, test sonucuyla çelişme yasağı, `test_sonucu`nun orkestratörce ölçülmesi | ✅ Kapatıldı |
 | R4 | Statik denetim gizlenmiş kodla atlatılır | Ağ erişimi mümkün olur | Bilinçli sınır (S2): atlatılsa dahi ayrıcalık düşürme, rlimit ve konteyner sınırı devrede | ⚠️ Kabul edildi |
@@ -315,9 +315,9 @@ Her kabul kriterinin bir teste karşılığı vardır. Boş kalan satırlar **he
 | # | Madde | Kapanacağı yer |
 |---|---|---|
 | A1 | Denetleyici `KABUL` derken `kritik` bulgu bildirirse ne olmalı? Spesifikasyonda kural yok; mevcut davranış testle kayda geçirildi, karar insana bırakıldı | Faz 4 öncesi |
-| A2 | Oyun başına gerçek token ve maliyet | Faz 4 ölçümü |
-| A3 | "Satranç LLM için çok zor" iddiası | Faz 6 hata senaryosu demosu — iddia kanıta dönüşecek |
-| A4 | Kural kartı MCP aracı | Faz 4 |
+| A2 | ~~Oyun başına gerçek token ve maliyet~~ | ✅ Ölçüldü: $0.179–0.221, ~13.700 token |
+| A3 | ~~"Satranç LLM için çok zor" iddiası~~ | ✅ Kanıtlandı: sistem 24 özel durum sayarak reddetti |
+| A4 | Kural kartı MCP aracı | Kapsam dışı bırakıldı — filesystem MCP sunucusu şartı zaten karşılıyor |
 
 ---
 

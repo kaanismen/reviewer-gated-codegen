@@ -21,6 +21,7 @@ from src.config import CASSETTES_DIR, WORKSPACES_ROOT, in_container, resolve_pro
 from src.llm import factory
 from src.llm.replay_provider import ReplayProvider
 from src.orchestrator.limits import LIMITS
+from src.orchestrator.runner import TaskBusy, TaskRunner
 from src.security.key_vault import KeyRejected, KeyVault
 from src.transcript.library import GameLibrary
 from src.transcript.models import Role
@@ -35,6 +36,7 @@ library = GameLibrary(WORKSPACES_ROOT)
 # Anahtarlar süreç belleğinde durur ve konteyner durunca kaybolur (§3.3).
 # Tek kullanıcılı yerel çalıştırma varsayımı (V3) gereği tek bir kasa var.
 vault = KeyVault()
+task_runner = TaskRunner(vault, library)
 
 # Üretilen oyun tarayıcıda çalışır — yani süreç sandbox'ının (§3.3)
 # DIŞINDADIR. Oradaki katmanların hiçbiri burada geçerli değil, o yüzden
@@ -114,6 +116,30 @@ def health() -> dict[str, object]:
         "workspaces_yazilabilir": WORKSPACES_ROOT.is_dir(),
         "limitler": LIMITS.as_dict(),
     }
+
+
+class TaskInput(BaseModel):
+    model_config = {"extra": "forbid"}
+
+    gorev: str = Field(min_length=1, max_length=LIMITS.max_task_chars)
+
+
+@app.post("/api/gorev")
+def start_task(girdi: TaskInput) -> dict[str, object]:
+    """Görevi başlatır ve hemen döner; koşu arka planda yürür."""
+    try:
+        job = task_runner.start(girdi.gorev)
+    except TaskBusy as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return {"durum": job.durum, "baslangic": job.baslangic.isoformat()}
+
+
+@app.get("/api/gorev")
+def task_status() -> dict[str, object]:
+    job = task_runner.job
+    if job is None:
+        return {"durum": "bos"}
+    return job.as_dict()
 
 
 class KeyInput(BaseModel):

@@ -334,7 +334,21 @@ Tüm limitler `src/orchestrator/limits.py` içinde tek yerde tanımlıdır ve `.
 | `RLIMIT_SUREC` | 32 | Fork bombası koruması |
 | `RLIMIT_DOSYA_MB` | 10 | Disk doldurma koruması |
 
-**Limit kontrolü her tur başında yapılır**, tur ortasında değil. Bir limit dolduğunda çalışan sandbox konteyneri sonlandırılır ve rapor üretilir.
+**Limit kontrolü her tur başında yapılır**, tur ortasında değil. Bir limit dolduğunda çalışan sandbox süreci sonlandırılır ve rapor üretilir.
+
+### 5.1 Ölçülen değerler (15.08.2026, gerçek koşular)
+
+Tavanların yerinde olup olmadığı ancak gerçek tüketim bilinince anlaşılır:
+
+| Görev | Sonuç | Tur | Girdi tok. | Çıktı tok. | Maliyet | Süre |
+|---|---|---|---|---|---|---|
+| tic-tac-toe | `KABUL_EDILDI` | 1 | 7.377 | 6.304 | **$0.221** | ~85 sn |
+| connect-4 | `KABUL_EDILDI` | 1 | ~7.000 | ~6.000 | **$0.179** | ~90 sn |
+| satranç | `KAPSAM_DISI` | 1 | 74 | 1.040 | **$0.012** | ~15 sn |
+
+**Tavanlar fazlasıyla geniş.** `MAX_TOKEN_TOPLAM` 150.000, gerçek tüketim ~13.700 — yani tek turlu bir koşu tavanın %9'unu kullanıyor. Beş turluk en kötü durum bile tavanın altında kalır. Tavanlar düşürülmedi: amaçları normal kullanımı sınırlamak değil, **kontrolden çıkmış bir döngüyü durdurmak**.
+
+**Prompt önbelleği beklenenden etkili.** Planlayıcının ücretli girdi token'ı 74'e indi; ~2.500 token'lık sistem promptu önbelleğe yazıldı. Sonraki koşularda okuma katsayısı 0.1x olduğundan bu kalem neredeyse sıfırlanır.
 
 ---
 
@@ -542,6 +556,7 @@ Bir teslim, aşağıdakilerin tamamı sağlandığında bitmiş sayılır:
 |---|---|---|
 | 1.0 | 14.08.2026 | İlk sürüm — kapsam, mimari, durum makinesi, şemalar, güvenlik politikası |
 | 1.1 | 14.08.2026 | **Eğitmen makinesinde dockerize çalışma şartı eklendi (K5).** §3.3 dağıtım mimarisi, iki kademeli sandbox modu, anahtarsız `replay` başlangıcı ve imaj kısıtları eklendi. §6'ya Docker soketi bağlama takası (S1) ve yedek mod izolasyon zaafı (S2) bilinen sınır olarak yazıldı. §2.3 V1 ve §12 tamamlanma ölçütü güncellendi |
+| 2.0 | 15.08.2026 | **Faz 4 — sistem ilk kez uçtan uca çalıştı.** Gerçek stdio MCP sunucusu (`fs_mcp_server.py` + `mcp_client.py`), üç agent, `orchestrator/loop.py`, `orchestrator/runner.py`, `/api/gorev` uçları. **Üç gerçek koşu:** tic-tac-toe `KABUL_EDILDI` ($0.221, 12 test), connect-4 `KABUL_EDILDI` ($0.179, 9 test), satranç `KAPSAM_DISI` ($0.012, 24 özel durum sayarak). §5'e ölçülen maliyet ve token değerleri yazıldı. 352 test yeşil |
 | 1.9 | 14.08.2026 | **Faz 3 — sağlayıcı katmanı.** `provider.py` (sözleşme + istek parmak izi), `pricing.py`, `factory.py` (rol bazlı çözümleme), Anthropic (SDK: akış + prompt önbelleği + uyarlanabilir düşünme), OpenAI (REST), Ollama, `replay_provider` (kayıt/oynatma). §8.1'e rol bazlı karar sırası, §8.3'e kaset kararları, **§8.4 (SDK vs REST gerekçesi)** ve **§8.5 (maliyet yukarı yuvarlanır)** eklendi. `openai` SDK'sı bağımlılıklardan çıkarıldı — imaj 464 → 438 MB. Anahtar uçları (`/api/anahtarlar`) bağlandı; `sistem` rolünün anahtar alamayacağı kasa katmanında zorlandı. 315 test yeşil |
 | 1.8 | 14.08.2026 | **U4 daraltıldı + oyun kütüphanesi.** U4 ölçütü "harici varlık" değil **"harici varlık dosyası"** olarak yeniden yazıldı: kodla üretilen görsel (canvas) ve ses (Web Audio osilatörü) kapsam içidir. Bu ayrım olmadan flappy bird gibi kapsam içi olması gereken oyunlar yalnızca tıklama sesi yüzünden reddedilirdi. §2.1'e oyun kütüphanesi eklendi: her görev kendi dizininde kalır, üretilen oyunlar listelenir ve aralarında geçiş yapılır; liste ayrı bir indeksten değil transkriptlerden türetilir. §6'ya **T2c (tarayıcıda çalışan üretilmiş kod)** eklendi — süreç sandbox'ı tarayıcıyı kapsamaz, kısıt CSP ve iframe sandbox'ı ile kurulur. 264 test yeşil |
 | 1.7 | 14.08.2026 | **Prompt–şema uyumu.** İnsan tarafından yazılan `prompts/*.v1.md` ile kodun zorladığı şemalar karşılaştırıldı ve dört sapma bulundu (ayrıntı: AI günlüğü Kayıt 2.2). §7.4'e iki iş kuralı eklendi: `RED` en az bir bulgu içermelidir (şema düzeyinde zorlanır) ve **`test_sonucu` orkestratör tarafından ölçülen değerlerle değiştirilir** — beyan edilen sayı karar denetimini atlatamaz. `onem` değerlerinin aksansız yazıldığı vurgulandı. Yeni test dosyası `test_prompt_ornekleri.py`: prompt'lardaki her JSON örneği gerçek şemaya karşı doğrulanıyor, sapma artık sessizce oluşamaz. 236 test yeşil |
