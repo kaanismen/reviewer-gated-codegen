@@ -343,6 +343,33 @@ def test_kapsam_disi_hata_degildir(library):
 # ==========================================================================
 
 
+def test_kesilen_uygulayici_yaniti_yeniden_denenir(library):
+    """Gerçek koşuda görüldü: token tavanına takılıp yarıda kesilen bir
+    yanıt tek denemede HATA'ya düşürüyordu. Planlayıcı ve denetleyicinin
+    yeniden deneme hakkı vardı, uygulayıcının yoktu."""
+    kesik = json.dumps(uygulama())[:200]  # JSON ortadan kesilmiş
+    orch = build(
+        library,
+        [PLAN],
+        [kesik, uygulama()],
+        [denetim("KABUL", "tüm testler geçti ve kriter karşılandı", 1, 0)],
+    )
+    outcome = orch.run("tic tac toe oyunu yaz")
+
+    assert outcome.durum is State.ACCEPTED
+    olaylar = [m.icerik.olay for m in outcome.transcript.mesajlar if m.rol is Role.SISTEM]
+    assert "uygulayici_sema_hatasi" in olaylar
+
+
+def test_iki_kez_kesilen_uygulayici_hataya_dusurur(library):
+    kesik = json.dumps(uygulama())[:200]
+    orch = build(library, [PLAN], [kesik, kesik], [])
+    outcome = orch.run("tic tac toe oyunu yaz")
+
+    assert outcome.durum is State.ERROR
+    assert outcome.rapor["uygulanan_kural"] == "G4e"
+
+
 def test_iki_kez_bozuk_plan_hataya_dusurur(library):
     orch = build(library, ["bu JSON değil", "yine JSON değil"], [], [])
     outcome = orch.run("tic tac toe oyunu yaz")

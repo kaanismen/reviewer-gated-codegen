@@ -286,6 +286,8 @@ Arayüzden girilen anahtar, ortam değişkenini geçersiz kılar — daha yeni v
 | G3r | `PLANLANIYOR` | şema hatası (1. kez) | `PLANLANIYOR` | Yeniden deneme hakkı var — planlayıcı tekrar çağrılır |
 | G3 | `PLANLANIYOR` | şema hatası (2. kez) | `HATA` | Yeniden deneme hakkı tükendi |
 | G4 | `UYGULANIYOR` | dosyalar yazıldı | `DENETLENIYOR` | ≥ 1 dosya yazıldı, tüm yollar workspace içinde |
+| G4r | `UYGULANIYOR` | şema/kesilme hatası (1. kez) | `UYGULANIYOR` | Yeniden deneme hakkı var; kesilmeyse çıktı bütçesi büyütülür |
+| G4e | `UYGULANIYOR` | şema/kesilme hatası (2. kez) | `HATA` | Yeniden deneme hakkı tükendi |
 | G5 | `UYGULANIYOR` | yol ihlali | `HATA` | Sandbox politikası ihlali — kurtarma yok |
 | G6 | `DENETLENIYOR` | karar = `KABUL` | `KABUL_EDILDI` | Tüm testler geçti **ve** sır taraması temiz |
 | G6s | `DENETLENIYOR` | karar = `KABUL` | `REDDEDILDI` | Sır taraması bulgu verdi — kabul geçersiz (KK-06) |
@@ -297,6 +299,8 @@ Arayüzden girilen anahtar, ortam değişkenini geçersiz kılar — daha yeni v
 | G11 | `REDDEDILDI` | ilerleme yok | `LIMIT_ASILDI` | Aynı red gerekçesi 2 kez üst üste |
 | G12 | *(herhangi)* | token/süre/maliyet aşımı | `LIMIT_ASILDI` | Bkz. §5 |
 | G13 | *(herhangi)* | beklenmeyen istisna | `HATA` | — |
+
+**Kesilme, şema hatasından ayrı tanınır.** Sağlayıcının `durdurma_nedeni` alanı `max_tokens` (Anthropic) veya `length` (OpenAI) ise yanıt token tavanına takılıp yarıda kesilmiştir. Bu, JSON ayrıştırmasından **önce** kontrol edilir; aksi hâlde yarım kalmış bir yanıt "JSON kapanmamış" diye raporlanır ve hata bütçe sorunu değil, modelin şemayı anlamaması gibi görünür. Kesilme sonrası yeniden denemede çıktı bütçesi 1.5 kat büyütülür (tavan 64.000) ve modele **daha kısa yazması** söylenir — aynı bütçeyle tekrar denemek aynı yerde kesilir.
 
 **Olay seçimi `karar` alanına bakılarak yapılmaz.** `event_for_review()` tek giriş noktasıdır ve §7.4 iş kuralını uygular; böylece kuralı uygulamayı unutan bir çağrı yeri T4'ü yeniden açamaz.
 

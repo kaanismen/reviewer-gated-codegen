@@ -1,7 +1,7 @@
 # AI Çalışma Günlüğü
 
 **Proje:** Agent-to-Agent Oyun Üretim Sistemi — GTech Yaz Akademisi Bitirme Projesi
-**Yürüten:** Ümit İsmen (analist + developer)
+**Yürüten:** Kaan Ümit İsmen (analist + developer)
 **Kullanılan AI aracı:** Claude Code (CLI, VS Code eklentisi) — model: Claude Opus 5
 **Günlük başlangıcı:** 14 Ağustos 2026
 
@@ -32,7 +32,7 @@ Bu dosya proje boyunca büyütülmüştür. İlk kayıtlar henüz tek satır kod
 
 **Prompt:**
 
-> Proje dosyası içerisinde bir powerpoint sunumu mevcut. İçerisinde göreceğin üzere tüm proje kapsamı ve gereklilikler mevcut. Bu proje GTech Yaz akademisi bitirme projesi olarak geçiyor ve işe alım sürecim için önemli. Önce sunumu incelemeni ve bana bulgularını paylaşmanı istiyorum. Daha sonrasında seninle birlikte karar aşamalarına geçeceğiz.
+> Proje dosyası içerisinde bir powerpoint sunumu mevcut. İçerisinde göreceğin üzere tüm proje kapsamı ve gereklilikler mevcut. Bu proje GTech Yaz akademisi bitirme projesi olarak geçiyor. Önce sunumu incelemeni ve bana bulgularını paylaşmanı istiyorum. Daha sonrasında seninle birlikte karar aşamalarına geçeceğiz.
 
 **AI çıktısı — özet:**
 
@@ -887,6 +887,44 @@ Fixture artık `selections`'ı geçici bir dizine bağlıyor ve ilgili ortam de�
 **Dikkat edilen nokta:** `selections.clear()` çağırmak testi düzeltirdi ama **kullanıcının gerçek seçim dosyasını silerdi**. Yalıtım, temizlikle değil değiştirmeyle yapıldı.
 
 ---
+
+### Kayıt 4.5 — Üç flappy bird koşusu: teşhis kullanıcının sandığı değildi
+
+**Prompt:**
+
+> bak dosyalarda 3 tane flappy bird denemesi var birisi oldu ama diğer ikisi hata verdi sana dediğim problemden bu arada
+
+**Karar sahibi:** İnsan — hatayı bildirdi ve bir teşhis önerdi.
+
+### Bildirilen teşhis doğru değildi
+
+Kullanıcı başarısızlıkları model seçimi sorununa bağladı. Transkriptler okundu:
+
+| Koşu | Uygulayıcı | Sonuç | Hata |
+|---|---|---|---|
+| 13:11:57 | `gpt-5.6-sol` | `HATA` (G13) | "JSON nesnesi kapanmamış" |
+| 13:12:47 | `gpt-5.6-sol` | `HATA` (G13) | "JSON nesnesi kapanmamış" |
+| 13:13:46 | `claude-sonnet-5` | `KABUL_EDILDI` | — |
+
+Ham çıktılar cümlenin ortasında kesilmişti. Sorun model seçimi değil, **çıktı token tavanına takılma**. Model seçimi yalnızca dolaylı ilgiliydi: `gpt-5.6-sol` akıl yürütmeye token harcayan bir model ve bütçenin çoğunu oraya bırakıp dosyaları yarıda kesiyor.
+
+Rapor olduğu gibi kabul edilmedi; kanıt okundu. Kullanıcının **gözlemi doğru, çıkarımı yanlıştı** — ikisi ayrı şeyler ve gözlem olmasa hata hiç bulunmayacaktı.
+
+### İki gerçek kusur
+
+**1. Kesilme, şema hatası gibi raporlanıyordu.** `durdurma_nedeni` alanı zaten yakalanıyordu (`max_tokens`/`length`) ama **hiç okunmuyordu**. Yarım kalmış bir yanıt "JSON kapanmamış" diye görünüyor, hata bütçe sorunu değil modelin şemayı anlamaması gibi okunuyordu. Yanlış teşhis, yanlış çözüme götürür.
+
+**2. Uygulayıcının yeniden deneme hakkı yoktu.** Planlayıcı (G3r) ve denetleyici (G9r) şema hatasında bir kez yeniden deneniyordu; uygulayıcı doğrudan `HATA`'ya düşüyordu. Bu asimetri `PROJECT.md` §4.2'de de yoktu — yani ne kodda ne belgede fark edilmişti. Üç agent'tan ikisine verilen hakkın üçüncüsüne verilmemesi için hiçbir gerekçe yoktu; sadece yazılmamıştı.
+
+Kesilme kontrolü artık JSON ayrıştırmasından **önce** yapılıyor. Yeni geçişler G4r/G4e eklendi. Kesilme sonrası yeniden denemede bütçe 1.5 kat büyütülüyor **ve** modele daha kısa yazması söyleniyor — aynı bütçeyle tekrar denemek aynı yerde keserdi.
+
+### Doğrulama: kısmen
+
+Aynı yapılandırma (`uygulayici = gpt-5.6-sol`) ile flappy bird yeniden çalıştırıldı: **`KABUL_EDILDI`, tek turda, kesilme olmadan.** Yani hata bu koşuda **tekrar etmedi** ve yeniden deneme yolu gerçek çağrıyla tetiklenmedi.
+
+Dürüst ifade: kesilme aralıklı bir olay (modelin o anki ayrıntı düzeyine bağlı). Düzeltme **birim testleriyle** doğrulanmıştır (`test_kesilen_uygulayici_yaniti_yeniden_denenir`, `test_iki_kez_kesilen_uygulayici_hataya_dusurur`), gerçek bir kesilme üzerinde **doğrulanmamıştır**. "Çalıştı" demek yerine bu ayrım yazıldı.
+
+Kazanılan kesin şey şu: aynı hata bir daha olursa artık `HATA` ile değil, adı konmuş bir uyarı ve bir yeniden denemeyle karşılanacak.
 
 ---
 

@@ -319,6 +319,24 @@ def test_saglayici_hata_metni_anahtari_sizdirmaz(vault):
     assert "GİZLENDİ" in metin
 
 
+@pytest.mark.parametrize("neden", ["max_tokens", "length"])
+def test_kesilme_durdurma_nedeninden_anlasilir(neden):
+    """Anthropic `max_tokens`, OpenAI `length` döndürür; ikisi de kesilmedir."""
+    response = LlmResponse(
+        metin="{...", kullanim=Usage(), model="m", saglayici="s",
+        durdurma_nedeni=neden,
+    )
+    assert response.kesildi is True
+
+
+@pytest.mark.parametrize("neden", ["end_turn", "stop", ""])
+def test_normal_bitis_kesilme_sayilmaz(neden):
+    response = LlmResponse(
+        metin="{}", kullanim=Usage(), model="m", saglayici="s", durdurma_nedeni=neden
+    )
+    assert response.kesildi is False
+
+
 def test_safe_uzun_metni_kisaltir():
     class P(LlmProvider):
         name = "p"

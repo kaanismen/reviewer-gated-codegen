@@ -139,6 +139,11 @@ class Usage:
         )
 
 
+# Yanıtın tamamlanmadan kesildiğini bildiren durdurma nedenleri.
+# Anthropic `max_tokens`, OpenAI `length` döndürür.
+TRUNCATION_REASONS = frozenset({"max_tokens", "length"})
+
+
 @dataclass(frozen=True)
 class LlmResponse:
     metin: str
@@ -146,6 +151,16 @@ class LlmResponse:
     model: str
     saglayici: str
     durdurma_nedeni: str = ""
+
+    @property
+    def kesildi(self) -> bool:
+        """Model çıktıyı tamamlayamadan token tavanına takıldı mı?
+
+        Bunu ayrı bir durum olarak bilmek gerekiyor: kesilmiş bir JSON
+        "ayrıştırılamadı" diye raporlanırsa hata modelin şemayı anlamadığına
+        yorulur, oysa sorun bütçedir ve çözümü farklıdır.
+        """
+        return self.durdurma_nedeni in TRUNCATION_REASONS
 
     def as_dict(self) -> dict[str, object]:
         return {

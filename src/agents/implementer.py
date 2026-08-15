@@ -79,13 +79,22 @@ class ImplementerAgent(Agent):
             )
 
         if onceki_hata:
+            # Kesilme ile şema hatası farklı sorunlardır; aynı öğütle
+            # düzeltilmezler. Kesilen bir yanıta "geçerli JSON döndür"
+            # demek işe yaramaz — sorun biçim değil, uzunluktur.
+            kesildi = "kesildi" in onceki_hata
+            ogut = (
+                "Çıktın uzunluk sınırına takıldı. Bu turda DAHA KISA yaz: "
+                "yorum satırlarını at, uzun değişken adları yerine kısa "
+                "olanları seç, gereksiz boşluk bırakma, oyunu en sade "
+                "biçimde kur. Üç dosyanın tamamı yine eksiksiz olmalı."
+                if kesildi
+                else "Yalnızca geçerli JSON döndür, başka metin yazma."
+            )
             messages.append(
                 Message(
                     rol="user",
-                    icerik=(
-                        f"Önceki yanıtın şemaya uymadı. Hata: {onceki_hata}\n"
-                        "Yalnızca geçerli JSON döndür, başka metin yazma."
-                    ),
+                    icerik=f"Önceki yanıtın reddedildi. Hata: {onceki_hata}\n{ogut}",
                 )
             )
         return messages

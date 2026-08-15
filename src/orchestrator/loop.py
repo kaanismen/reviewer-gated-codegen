@@ -58,6 +58,10 @@ from src.transcript.store import Transcript, TranscriptStore
 
 EventSink = Callable[[AgentMessage], None]
 
+# Kesilme sonrası yeniden denemede bütçe büyütülür ama sınırsız değil:
+# çok büyük bir tavan, maliyet tavanını tek çağrıda tüketebilir.
+TRUNCATION_RETRY_CEILING = 64_000
+
 
 @dataclass
 class RunOutcome:
@@ -278,14 +282,31 @@ class Orchestrator:
         self, machine, transcript, budget, implementer: ImplementerAgent,
         mcp: McpClient, plan, onceki_denetim, tur: int
     ) -> dict[str, str]:
-        try:
-            generated = implementer.generate(
-                implementer.messages_for(plan, onceki_denetim)
-            )
-        except AgentOutputError as exc:
-            self._system(transcript, tur, "uygulayici_sema_hatasi", f"{exc} | ham: {exc.ham}")
-            machine.fire(Event.UNEXPECTED_ERROR, Payload(detail=str(exc)))
-            return {}
+        generated = None
+        hata = ""
+        bütçe = implementer.config.max_tokens
+
+        while machine.state is State.IMPLEMENTING:
+            try:
+                generated = implementer.generate(
+                    implementer.messages_for(plan, onceki_denetim, hata),
+                    max_tokens=bütçe,
+                )
+                break
+            except AgentOutputError as exc:
+                hata = str(exc)
+                self._system(
+                    transcript, tur,
+                    "uygulayici_kesildi" if exc.kesildi else "uygulayici_sema_hatasi",
+                    f"{exc} | ham: {exc.ham}",
+                )
+                if exc.kesildi:
+                    # Aynı bütçeyle yeniden denemek aynı yerde kesilir.
+                    bütçe = min(int(bütçe * 1.5), TRUNCATION_RETRY_CEILING)
+                machine.fire(Event.IMPLEMENT_SCHEMA_ERROR, Payload(detail=hata))
+
+        if generated is None:
+            return {}  # G4e ile HATA'ya düşüldü
 
         wire: ImplementerWire = generated.icerik
         mcp.calls.clear()

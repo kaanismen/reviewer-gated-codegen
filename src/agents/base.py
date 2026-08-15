@@ -46,11 +46,15 @@ class AgentOutputError(RuntimeError):
 
     `ham` alanı gizlemeden geçmiş ve kısaltılmış çıktıyı taşır; denetleyiciye
     ve transkripte gider ki hatanın ne olduğu görünsün.
+
+    `kesildi` ayrı tutulur: token tavanına takılmış bir yanıt ile şemayı
+    yanlış anlamış bir yanıt farklı sorunlardır ve farklı çözülürler.
     """
 
-    def __init__(self, mesaj: str, ham: str = "") -> None:
+    def __init__(self, mesaj: str, ham: str = "", kesildi: bool = False) -> None:
         super().__init__(mesaj)
         self.ham = ham
+        self.kesildi = kesildi
 
 
 @dataclass(frozen=True)
@@ -180,15 +184,30 @@ class Agent(ABC):
         üretilir (§7.3). Bu yüzden üretim ve mesaj kurma ayrılmıştır.
         """
 
-    def generate(self, messages: list[Message]) -> GeneratedOutput:
+    def generate(
+        self, messages: list[Message], max_tokens: int | None = None
+    ) -> GeneratedOutput:
         response = self.provider.complete(
             LlmRequest(
                 system=self.prompt.metin,
                 messages=tuple(messages),
                 model=self.config.model,
-                max_tokens=self.config.max_tokens,
+                max_tokens=max_tokens or self.config.max_tokens,
             )
         )
+
+        # Kesilme JSON ayrıştırmasından ÖNCE kontrol edilir. Aksi hâlde
+        # yarıda kalmış bir yanıt "JSON kapanmamış" diye raporlanır ve hata
+        # bütçe sorunu değil, modelin şemayı anlamaması gibi görünür.
+        if response.kesildi:
+            raise AgentOutputError(
+                f"{self.rol.value} çıktısı token tavanına takıldı ve yarıda "
+                f"kesildi (durdurma nedeni: {response.durdurma_nedeni}, "
+                f"tavan: {max_tokens or self.config.max_tokens}, "
+                f"üretilen: {response.kullanim.token_cikti})",
+                response.metin[-300:],
+                kesildi=True,
+            )
 
         payload = extract_json(response.metin)
         try:

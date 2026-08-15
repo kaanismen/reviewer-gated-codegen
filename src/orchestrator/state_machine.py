@@ -49,6 +49,7 @@ class Event(str, Enum):
     PLAN_PRODUCED = "plan_uretildi"
     PLAN_SCHEMA_ERROR = "plan_sema_hatasi"
     FILES_WRITTEN = "dosyalar_yazildi"
+    IMPLEMENT_SCHEMA_ERROR = "uygulayici_sema_hatasi"
     PATH_VIOLATION = "yol_ihlali"
     REVIEW_ACCEPTED = "denetim_kabul"
     REVIEW_REJECTED = "denetim_red"
@@ -83,6 +84,7 @@ class RunContext:
     task_text: str = ""
     turn: int = 0
     plan_schema_errors: int = 0
+    implement_schema_errors: int = 0
     review_parse_errors: int = 0
     rejection_reasons: list[str] = field(default_factory=list)
     tokens_in: int = 0
@@ -176,6 +178,10 @@ def _schema_retries_left(ctx: RunContext, p: Payload) -> bool:
     return ctx.plan_schema_errors + 1 < 2
 
 
+def _implement_retries_left(ctx: RunContext, p: Payload) -> bool:
+    return ctx.implement_schema_errors + 1 < 2
+
+
 def _files_ok(ctx: RunContext, p: Payload) -> bool:
     return p.written_file_count >= 1 and p.all_paths_inside_workspace
 
@@ -223,6 +229,10 @@ def _start_first_turn(ctx: RunContext, p: Payload) -> None:
 
 def _count_schema_error(ctx: RunContext, p: Payload) -> None:
     ctx.plan_schema_errors += 1
+
+
+def _count_implement_error(ctx: RunContext, p: Payload) -> None:
+    ctx.implement_schema_errors += 1
 
 
 def _count_parse_error(ctx: RunContext, p: Payload) -> None:
@@ -299,6 +309,16 @@ TRANSITIONS: tuple[Transition, ...] = (
     Transition("G4", State.IMPLEMENTING, Event.FILES_WRITTEN, State.REVIEWING,
                _files_ok, None,
                "en az bir dosya yazıldı, tüm yollar workspace içinde"),
+
+    # Planlayıcı (G3r) ve denetleyicinin (G9r) yeniden deneme hakkı vardı,
+    # uygulayıcının yoktu. Asimetri gerçek koşuda görüldü: token tavanına
+    # takılıp yarıda kesilen bir yanıt tek denemede HATA'ya düşürüyordu.
+    Transition("G4r", State.IMPLEMENTING, Event.IMPLEMENT_SCHEMA_ERROR,
+               State.IMPLEMENTING, _implement_retries_left, _count_implement_error,
+               "ilk şema/kesilme hatası — uygulayıcı yeniden denenir"),
+    Transition("G4e", State.IMPLEMENTING, Event.IMPLEMENT_SCHEMA_ERROR, State.ERROR,
+               effect=_count_implement_error,
+               note="ikinci şema/kesilme hatası — yeniden deneme hakkı tükendi"),
 
     Transition("G5", State.IMPLEMENTING, Event.PATH_VIOLATION, State.ERROR,
                effect=_record_path_violation,
