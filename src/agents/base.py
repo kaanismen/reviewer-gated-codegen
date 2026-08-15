@@ -93,7 +93,58 @@ def load_prompt(rol: Role, prompts_dir: Path | None = None) -> LoadedPrompt:
     )
 
 
-def extract_json(text: str) -> dict:
+def repair_json(text: str) -> str:
+    """LLM'lerin en sık yaptığı iki JSON hatasını onarır.
+
+    1. **Dize içinde kaçışlanmamış satır sonu / sekme.** Model kodu JSON
+       dizesine gömerken gerçek satır sonu bırakır; `json` bunu reddeder.
+    2. **Kapanıştan önce fazladan virgül** (`[1, 2,]`).
+
+    Onarım yalnızca **katı ayrıştırma başarısız olduktan sonra** denenir ve
+    tek geçişte, dize içinde olup olmadığını izleyerek yapılır — kör bir
+    düzenli ifade, dizenin içindeki masum metni de bozardı.
+
+    Bilinçli olarak yapılmayanlar: tırnak türü değiştirme, yorum satırı
+    silme, eksik parantez tamamlama. Bunlar tahmin gerektirir ve yanlış
+    tahmin, bozuk çıktıyı sessizce "geçerli" hale getirir.
+    """
+    KACIS = {"\n": "\\n", "\r": "\\r", "\t": "\\t"}
+    out: list[str] = []
+    in_string = False
+    escaped = False
+
+    for index, char in enumerate(text):
+        if in_string:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == '"':
+                in_string = False
+            elif char in KACIS:
+                out.append(KACIS[char])
+                continue
+            out.append(char)
+            continue
+
+        if char == '"':
+            in_string = True
+            out.append(char)
+            continue
+
+        if char == ",":
+            # Sonraki boşluk dışı karakter kapanışsa virgül fazladır.
+            sonraki = next(
+                (c for c in text[index + 1:] if not c.isspace()), ""
+            )
+            if sonraki in "}]":
+                continue
+        out.append(char)
+
+    return "".join(out)
+
+
+def extract_json(text: str) -> tuple[dict, bool]:
     """LLM metninden ilk dengeli JSON nesnesini çıkarır.
 
     Modeller talimata rağmen çıktıyı ``` bloklarına sarabiliyor veya önüne
@@ -131,15 +182,21 @@ def extract_json(text: str) -> dict:
             depth -= 1
             if depth == 0:
                 candidate = stripped[start : index + 1]
+                onarildi = False
                 try:
                     parsed = json.loads(candidate)
-                except json.JSONDecodeError as exc:
-                    raise AgentOutputError(
-                        f"JSON ayrıştırılamadı: {exc}", candidate[:400]
-                    ) from exc
+                except json.JSONDecodeError:
+                    try:
+                        parsed = json.loads(repair_json(candidate))
+                        onarildi = True
+                    except json.JSONDecodeError as exc:
+                        raise AgentOutputError(
+                            f"JSON ayrıştırılamadı (onarım da işe yaramadı): {exc}",
+                            candidate[:400],
+                        ) from exc
                 if not isinstance(parsed, dict):
                     raise AgentOutputError("JSON nesnesi bekleniyordu", candidate[:400])
-                return parsed
+                return parsed, onarildi
 
     raise AgentOutputError("JSON nesnesi kapanmamış", stripped[:400])
 
@@ -151,6 +208,9 @@ class GeneratedOutput:
     icerik: BaseModel
     response: LlmResponse
     ham_metin: str
+    # JSON katı ayrıştırmadan geçmedi, onarılarak okundu. Transkripte
+    # yazılır: sessizce onarmak, çıktı kalitesini gizlemek olurdu.
+    onarildi: bool = False
 
 
 @dataclass
@@ -209,7 +269,17 @@ class Agent(ABC):
                 kesildi=True,
             )
 
-        payload = extract_json(response.metin)
+        try:
+            payload, onarildi = extract_json(response.metin)
+        except AgentOutputError as exc:
+            # Durdurma nedeni tanı için kritik: "kesildi" ile "bozuk JSON
+            # üretti" farklı sorunlardır ve mesaja yazılmazsa ayırt edilemez.
+            raise AgentOutputError(
+                f"{exc} [durdurma_nedeni={response.durdurma_nedeni or 'bildirilmedi'}, "
+                f"çıktı={response.kullanim.token_cikti} tok]",
+                exc.ham,
+            ) from exc
+
         try:
             icerik = self.content_model.model_validate(payload)
         except ValidationError as exc:
@@ -217,7 +287,12 @@ class Agent(ABC):
                 f"{self.rol.value} çıktısı şemaya uymuyor: {_first_errors(exc)}",
                 json.dumps(payload, ensure_ascii=False)[:400],
             ) from exc
-        return GeneratedOutput(icerik=icerik, response=response, ham_metin=response.metin)
+        return GeneratedOutput(
+            icerik=icerik,
+            response=response,
+            ham_metin=response.metin,
+            onarildi=onarildi,
+        )
 
     def build_message(self, icerik, response: LlmResponse, tur: int) -> AgentMessage:
         """Köken bilgisini bağlar: prompt sürümü, hash, model, token, maliyet."""

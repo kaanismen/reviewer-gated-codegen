@@ -308,6 +308,13 @@ class Orchestrator:
         if generated is None:
             return {}  # G4e ile HATA'ya düşüldü
 
+        if generated.onarildi:
+            self._system(
+                transcript, tur, "json_onarildi",
+                "Uygulayıcının JSON çıktısı katı ayrıştırmadan geçmedi; "
+                "kaçışlanmamış satır sonu / fazladan virgül onarıldı.",
+            )
+
         wire: ImplementerWire = generated.icerik
         mcp.calls.clear()
         yazilan: list[WrittenFile] = []
