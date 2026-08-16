@@ -17,3 +17,6 @@ venv/
 
 # Office geçici dosyaları
 ~$*
+
+# Egitmenlerin kendi sunum dosyasi - depoya ve teslime girmez
+*.pptx
