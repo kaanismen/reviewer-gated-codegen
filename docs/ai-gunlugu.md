@@ -980,6 +980,97 @@ Temiz klon, API anahtarı olmadan:
 
 Demo bu klondan, hiç para harcamadan çekilebilir.
 
+### Kayıt 4.7 — Karışık kurulum: sistem bildiğini söylemiyordu
+
+**Prompt:**
+
+> şu anda patladı planlayıcıdan sonra
+
+**Karar sahibi:** İnsan — demo hazırlığı sırasında gerçek bir koşuda karşılaştı.
+
+### Teşhis
+
+| rol | sağlayıcı | neden |
+|---|---|---|
+| planlayici | `anthropic` | anahtar girilmiş |
+| uygulayici | `replay` | openai seçili, **anahtar yok** |
+| denetleyici | `replay` | anthropic seçili, **o rol için anahtar yok** |
+
+Anahtar yalnızca **planlayıcı** rolüne girilmişti — anahtar formunun rol seçicisi varsayılan olarak orada duruyordu. Planlayıcı gerçek çağrı yapıp özgün bir plan üretti; uygulayıcı replay'de o plan için kaset bulamadı. Kombinasyon ilk saniyeden itibaren çalışamazdı.
+
+**Sistem bunu başlamadan önce biliyordu.** Rol tablosundaki `gerekce` sütunu iki rol için de "anahtar yok" yazıyordu. Ama ayarlar paneli katlı olduğu için kimse görmüyordu. **Bilgiyi üretmek yetmiyor; görülecek yere koymak gerekiyor.**
+
+### İki düzeltme
+
+1. `/api/health` artık `yapilandirma_uyarisi` döndürüyor ve arayüz bunu **görev kutusunun hemen üstünde** gösteriyor. Uyarı hangi rolde duracağını da yazıyor.
+2. Anahtar formunun rol seçicisine **"tüm roller"** eklendi ve **varsayılan** yapıldı. Asıl hata buradaydı: tek anahtarın tek role uygulanması, kullanıcıyı bozuk bir kuruluma davet ediyordu.
+
+İkincisi daha önemli. Uyarı hatayı görünür kılar; varsayılanı düzeltmek hatayı **oluşmaz** kılar.
+
+---
+
+### Kayıt 4.8 — Bozuk JSON: onarım ve onarmamanın sınırı
+
+**Prompt:**
+
+> minesweeper istedim bu döndü fazla token mi?
+
+**Karar sahibi:** İnsan (rapor ve bir teşhis önerisi).
+
+### Teşhis: token değil
+
+| Kanıt | Anlamı |
+|---|---|
+| Sistem `uygulayici_sema_hatasi` dedi, `uygulayici_kesildi` demedi | Sağlayıcı kesilme bildirmedi |
+| İkinci hata char 9056'da **yapısal** bozukluk | ~9 KB üretildi, sonra JSON bozuldu |
+| `gpt-5.6-luna`, 32.000 tavan | Dolsaydı `length` dönerdi |
+
+Model geçersiz JSON üretti. Boyut **dolaylı** sebep: üç dosyayı tek JSON bloğunda kaçışlanmış dize olarak yazmak, binlerce karakter boyunca tek bir tırnak veya satır sonu hatası kaldırmıyor.
+
+Kullanıcının önerdiği teşhis yanlıştı ama **sorusu doğru yeri işaret ediyordu** — "fazla mı" sorusu boyut/bütçe ekseninde düşünmeyi tetikledi ve gerçek sebep de boyutla ilgili çıktı, sadece farklı bir mekanizmayla.
+
+### Kayıt 4.5'in devamı: mekanizma çalıştı
+
+Yeniden deneme devreye girdi (G4r → G4e). Bir gün önce tek denemede düşerdi. Mekanizma doğru çalıştı, sorun mekanizmanın çözemeyeceği bir yerdeydi.
+
+### Onarım — ve asıl karar: neyin onarılmayacağı
+
+`repair_json()` katı ayrıştırma **başarısız olduktan sonra** devreye girer ve yalnızca iki hatayı düzeltir: dize içinde kaçışlanmamış satır sonu/sekme, ve kapanıştan önceki fazladan virgül. Tek geçişte, dize içinde olup olunmadığını izleyerek — kör bir düzenli ifade dizenin içindeki masum metni bozardı.
+
+**Bilinçli olarak yapılmayanlar:** tırnak türü değiştirme, yorum satırı silme, **eksik parantez tamamlama**.
+
+Sonuncusu en cazip ve en tehlikeli olanı. Kesilmiş bir JSON'u kapatmak kolaydır ve koşuyu "kurtarır" — ama kurtardığı şey yarım bir dosyadır. Sistem onu geçerli sayar, testler koşar, belki geçer bile. Bozuk çıktı sessizce "başarılı" olur. Test dosyasının yarısı bu yüzden onarımın **neyi düzeltmediğini** sınıyor.
+
+Onarım uygulandıysa transkripte `json_onarildi` yazılıyor — sessizce onarmak çıktı kalitesini gizlemek olurdu.
+
+---
+
+### Kayıt 4.9 — Agent hattı arayüzü ve kasetleri bozan sessiz seçim
+
+**Prompt:**
+
+> Şimdi biraz UI geliştirmesi yapalım. chatboxa komut verdiğimizde biraz daha görsel olarak güzel görünen bir düşünme arayüzü istiyorum her agent'ı da kullanıcıya ne yaptığını (çok detaylı olmasa da) göstermesi güzel olur.
+
+**Karar sahibi:** İnsan.
+
+### Yeni veri gerekmedi
+
+Akış yalnızca **tamamlanmış** mesajları taşıyor; "şu an ne oluyor" bilgisi aradaki boşluklarda yok. Ama durum makinesinin sırası bilindiği için son mesajdan sonraki adım **çıkarılabiliyor**: planlayıcı bitti → uygulayıcı yazıyor, test koştu → denetleyici inceliyor.
+
+Üç agent kartı: bekliyor / çalışıyor (nabız + sayan süre) / tamamlandı / revizyon istedi / gerekçeli ret. Revizyon turunda uygulayıcıya `tur 2` rozeti düşüyor.
+
+Ham transkript silinmedi, **katlandı**. Hat görünümü öne çıkıyor ama kanıt bir tık uzakta duruyor — demo için birincisi, denetlenebilirlik için ikincisi gerekli.
+
+### Doğrularken çıkan gerçek tuzak
+
+Değişikliği demo kopyasında sınarken kayıtlı senaryo düştü. Sebep: **kullanıcının denemelerinden kalan bir model seçimi** (`denetleyici → claude-sonnet-5`). Kaset parmak izi modeli içerdiği için, kasetler `claude-opus-5` ile kaydedilmişken seçim değişince hiçbiri tutmuyordu.
+
+Bu, demo günü tam ekranda patlayacak ve sebebi anlaşılmayacak türden bir hataydı.
+
+Sistemik kapatıldı: replay modunda seçili model kasetlerde yoksa koşudan **önce** uyarılıyor, hangi modellerle kayıt yapıldığı da yazılıyor. Kayıt 4.7'deki dersin ikinci uygulaması — bilgi zaten sistemde vardı, görülecek yere kondu.
+
+**Örüntü:** son üç kaydın üçü de aynı aileden. Sistem bir sorunu **önceden biliyor** ama kullanıcıya söylemiyor. Karışık kurulum, kaset-model uyuşmazlığı, "ayar kayboldu" görüntüsü. Üçünde de düzeltme yeni bilgi üretmek değil, var olan bilgiyi doğru yere koymaktı.
+
 ---
 
 # Karar kütüğü — tam liste
@@ -1007,8 +1098,12 @@ Kayıt 1.4'teki ilk 13 satırın devamı. "İnsan" işaretli satırlar, AI'ın �
 | 30 | Transkript geçmişi görüntüleme | **İnsan** | |
 | 31 | Seçim sağlayıcıyı da belirlesin | **İnsan** (hata raporu) | AI'ın yarım düzeltmesini tamamladı (Kayıt 4.3) |
 | 32 | Günlükte akış promptları kaydedilmesin | **İnsan** | Karar taşımayan girdi günlüğü şişirir |
+| 33 | Anahtar formunun varsayılanı "tüm roller" | AI kararı (insan hata raporu üzerine) | Uyarı hatayı görünür kılar, varsayılan onu oluşmaz kılar |
+| 34 | JSON onarımı eksik parantezi **tamamlamaz** | AI kararı | Kesilmiş çıktıyı kapatmak, yarım dosyayı "geçerli" göstermek olurdu |
+| 35 | **Agent hattı görünümü** | **İnsan** | Transkript ham liste olarak akıyordu; hangi agent'ın ne yaptığı görünmüyordu |
+| 36 | Ham transkript silinmedi, katlandı | AI kararı | Demo için hat, denetlenebilirlik için transkript — ikisi de gerekli |
 
-**Sayım:** 32 kararın **17'si doğrudan insana** ait. Ürünün kimliğini belirleyen kararların (oyun alanı, uygulanabilirlik ölçütü, model kataloğu, kütüphane) tamamı bu grupta.
+**Sayım:** 36 kararın **19'u doğrudan insana** ait. Ürünün kimliğini belirleyen kararların (oyun alanı, uygulanabilirlik ölçütü, model kataloğu, kütüphane, agent hattı) tamamı bu grupta.
 
 ---
 
@@ -1036,23 +1131,32 @@ Rubriğin istediği "denetim raporu" budur. Sıralama kronolojik.
 | 16 | Aynı hatanın yarısı düzeltilmiş — seçim sağlayıcıyı belirlemiyordu | **İnsan** | Karar sırası yeniden kuruldu |
 | 17 | Arayüz "ayar kayboldu" gösteriyordu; veri sağlamdı | **İnsan** | Gereksiz yeniden çizim kaldırıldı |
 | 18 | Testler geliştiricinin yerel seçim dosyasına bağımlı hale gelmişti | **Test** | Fixture yalıtıldı |
+| 19 | Uygulayıcının yeniden deneme hakkı yoktu (G3r/G9r vardı) | **İnsan** (flappy bird raporu) | G4r/G4e eklendi; asimetri ne kodda ne belgede fark edilmişti |
+| 20 | Kesilme, şema hatası gibi raporlanıyordu | **İnsan** raporu → AI teşhisi | `durdurma_nedeni` yakalanıyordu ama okunmuyordu |
+| 21 | **Kayıt/oynatma denetleyici adımında baştan beri kırıkmış** | **Temiz klon testi** | `duration_ms` her koşuda farklı → parmak izi asla tutmaz |
+| 22 | Karışık kurulum sessizce başarısız oluyordu | **İnsan** (demo hazırlığı) | Bilgi sistemde vardı, görülecek yerde değildi |
+| 23 | Kalmış model seçimi kasetleri geçersiz kılıyordu | AI (UI doğrulaması sırasında) | Koşudan önce uyarı |
 
 ## Bulguların dağılımı
 
 | Yakalayan | Adet |
 |---|---|
-| İnsan (kullanma, oynama, hata raporu) | **7** |
-| Otomatik test | 5 |
-| AI'ın kendi gözden geçirmesi | 4 |
-| Doğrudan ölçüm | 2 |
+| **İnsan** (kullanma, oynama, hata raporu) | **11** |
+| Otomatik test | 6 |
+| AI'ın kendi gözden geçirmesi | 5 |
+| Doğrudan ölçüm / temiz klon | 3 |
 
-## Üç tekrarlayan örüntü
+İnsan payının yarıdan fazla olması tesadüf değil: kalan bulguların çoğu **sistemi kullanmakla** ortaya çıkıyor, kodu okumakla değil. Testler yalnızca baktıkları yeri korur.
+
+## Dört tekrarlayan örüntü
 
 **1. AI kendi belgelediği sakıncayı yine de önerebiliyor.** Bulgu 1'de S1 sınırını yazan da o çözümü öneren de AI'dı. Ders: AI'ın yazdığı "bilinen sınırlar" bölümü kabul edilecek bir teslim değil, sorgulanacak bir kontrol listesidir.
 
 **2. AI kendi geçici çözümüyle hatanın üstünü örtüyor.** Bulgu 2 (`RLIMIT_AS`), 7 (`grant_access`) ve 15 (`MODEL_*` elle verildi) aynı kalıp: AI bir engeli elle aşıyor, aşma işlemini "yapılandırma ayrıntısı" diye not edip geçiyor. Sorulmayan soru hep aynı: *"bunu elle yapmasaydım ne olurdu?"*
 
-**3. Test yalnızca baktığı yeri korur.** Bulgu 12 en keskin örnek: 379 test `logic.js`'i kusursuz doğruluyor, `game.html` hiçbirinin görüş alanında değil. Sistemin garantisi göründüğünden dardır ve bu artık S6/R7 olarak yazılıdır.
+**3. Test yalnızca baktığı yeri korur.** Bulgu 12 en keskin örnek: 379 test `logic.js`'i kusursuz doğruluyor, `game.html` hiçbirinin görüş alanında değil. Bulgu 21 aynı ailenin ikinci üyesi: uçtan uca testler kayıt/oynatmayı hiç kullanmadığı için mekanizmanın ön koşulu üç gün boyunca sınanmadı. Sistemin garantisi göründüğünden dardır.
+
+**4. Sistem bildiğini söylemiyor.** Bulgu 15, 22 ve 23 aynı kalıp: sorun **koşu başlamadan önce sistemde biliniyor** ama kullanıcıya ulaşmıyor — katlanmış bir panelde, bir `gerekce` alanında, bir kaset üstverisinde duruyor. Üçünde de düzeltme yeni bilgi üretmek değil, var olan bilgiyi **görülecek yere koymak** oldu. Bir de daha güçlüsü: anahtar formunun varsayılanını değiştirmek, uyarıyı hiç gerektirmeyecek biçimde hatayı ortadan kaldırdı.
 
 ## Kapanmamış maddeler
 
@@ -1067,4 +1171,17 @@ Rubriğin istediği "denetim raporu" budur. Sıralama kronolojik.
 
 ## Günlüğün durumu
 
-Bu günlük 15 Ağustos 2026 itibarıyla **tamamdır**: 22 kayıt, 32 kararlık kütük, 18 maddelik denetim özeti. Kalan tek iş demo kaydıdır; çekildiğinde buraya son bir kayıt eklenecektir.
+Bu günlük 15 Ağustos 2026 itibarıyla **tamamdır**: 26 kayıt, 36 kararlık kütük, 23 maddelik denetim özeti. Kalan tek iş demo kaydıdır; çekildiğinde buraya son bir kayıt eklenecektir.
+
+### Sayılarla süreç
+
+| | |
+|---|---|
+| Süre | 2 gün (14–15 Ağustos 2026) |
+| Commit | 25 |
+| Test | 411, ~18 sn, sıfır gerçek API çağrısı |
+| Üretilen oyun | tic-tac-toe, connect-4, snake, 2048, flappy bird, minesweeper |
+| Gerekçeli ret | satranç — 24 özel durum sayarak |
+| Gerçek harcama | ≈$1,10 |
+| Karar | 36 (19'u doğrudan insan) |
+| Denetim bulgusu | 23 (11'ini insan yakaladı) |

@@ -190,6 +190,18 @@ Aşağıdakiler ilk analiz turunda yoktu; sistem kullanılmaya başlandıktan so
 
 **KK-29** — *Given* ok tuşlarıyla oynanan bir oyun açık, *When* kullanıcı tam ekrana geçer, *Then* oyun iframe sandbox'ını **koruyarak** tam ekran olur ve ok tuşları ana sayfayı kaydırmaz.
 
+### Hatalı kurulumun önlenmesi ve görünürlük
+
+**KK-30** — *Given* roller karışık yapılandırılmış (bazısı gerçek sağlayıcıda, bazısı `replay`), *When* kullanıcı sayfayı açar, *Then* görev kutusunun üstünde koşunun **hangi rolde duracağını** söyleyen bir uyarı görünür. Görev başlatılıp dakikalarca beklendikten sonra değil, **öncesinde**.
+
+**KK-31** — *Given* kullanıcı bir API anahtarı giriyor, *When* rol seçicisine dokunmaz, *Then* anahtar **üç role birden** uygulanır. Tek role uygulanıp diğerlerinin sessizce `replay`'de kalması mümkün değildir.
+
+**KK-32** — *Given* `replay` modunda seçili model kasetlerde bulunmuyor, *When* kullanıcı sayfayı açar, *Then* uyumsuzluk ve kasetlerin hangi modellerle kaydedildiği koşudan önce bildirilir.
+
+**KK-33** — *Given* bir görev çalışıyor, *When* kullanıcı ekrana bakar, *Then* üç agent'ın her biri için **bekliyor / çalışıyor / tamamlandı / revizyon istedi** durumu ve çalışan agent'ın geçen süresi görünür; revizyon turunda tur numarası gösterilir.
+
+**KK-34** — *Given* uygulayıcı JSON çıktısı katı ayrıştırmadan geçmiyor, *When* onarım denenir, *Then* yalnızca tahmin gerektirmeyen hatalar (kaçışsız satır sonu, fazladan virgül) düzeltilir; **eksik parantez tamamlanmaz** ve onarım uygulandıysa transkripte yazılır.
+
 ---
 
 ## 5. Kapsam
@@ -285,6 +297,7 @@ Sabit bir oyun listesi, "başa çıkabileceğimiz karmaşıklık" için **kötü
 | R5 | Arayüzde kimlik doğrulama yok | `localhost:8000`'e erişen anahtarı kullanabilir | Bilinçli sınır (S5): port `127.0.0.1`'e bağlı, anahtar bellekte, açık temizleme eylemi | ⚠️ Kabul edildi |
 | R6 | Geç gelen gereksinim kapsamı bozar | Revizyon maliyeti | Üç açık soru 14.08'de kapatıldı; kalan gereksinim beklenmiyor | ✅ Kapatıldı |
 | R7 | **Mantık doğru olduğu hâlde oyun kullanıcıya yanlış görünür** | Sistem "kabul edildi" der, kullanıcı bozuk bir oyun oynar | Sunum katmanı hiçbir kapıdan geçmiyor (bilinen sınır S6). Azaltıcı yön: anlamsal eşlemelerin `logic.js`'e taşınması (§10.1) | ⚠️ **Gerçekleşti** — 15.08 connect-4 renk eşlemesi. İnsan testi buldu, 352 otomatik test bulamadı |
+| R8 | **Sistem bildiği bir sorunu kullanıcıya söylemiyor** | Koşu başlar, dakikalar ve para harcanır, sonra öngörülebilir bir noktada durur | Kritik bilgi katlanmış panellerden **görev kutusunun üstüne** taşındı; ayrıca varsayılanlar hatayı oluşmaz kılacak biçimde değiştirildi (KK-30…32) | ⚠️ **Üç kez gerçekleşti** — karışık kurulum, kaset–model uyuşmazlığı, "ayar kayboldu" görüntüsü. Üçü de kapatıldı |
 
 ---
 
@@ -323,24 +336,30 @@ Her kabul kriterinin bir teste karşılığı vardır. Boş kalan satırlar **he
 | KK-27 | US-13 | `test_selection.py::test_secim_diske_yazilir_ve_geri_okunur` | ✅ |
 | KK-28 | US-14 | `test_library.py` (dosya sunumu) + tarayıcı doğrulaması | ✅ |
 | KK-29 | US-15 | Tarayıcı doğrulaması (otomatik test kapsamı dışı) | ✅ |
+| KK-30 | US-13 | `test_web_api.py::test_karisik_kurulum_kosudan_once_uyarir` | ✅ |
+| KK-31 | US-06 | Arayüz varsayılanı (`tüm roller`) + tarayıcı doğrulaması | ✅ |
+| KK-32 | US-07 | `test_web_api.py::test_replayde_kasetsiz_model_secimi_uyarir` | ✅ |
+| KK-33 | US-03 | Tarayıcı doğrulaması (SSE olaylarından türetilir) | ✅ |
+| KK-34 | US-02 | `test_agent_base.py` (17 test — yarısı onarımın sınırını sınar) | ✅ |
 
-**Test dağılımı (15.08.2026, 379 test, ~18 sn):**
+**Test dağılımı (15.08.2026, 411 test, ~18 sn):**
 
 | Dosya | Test | Kapsadığı |
 |---|---|---|
 | `test_security.py` | 62 | T1, T2b, T3, T5 |
-| `test_state_machine.py` | 47 | 16 geçiş, tüm koruma koşulları |
-| `test_provider.py` | 32 | Sağlayıcı sözleşmesi, maliyet, kayıt/oynatma |
+| `test_state_machine.py` | 47 | 18 geçiş, tüm koruma koşulları |
+| `test_provider.py` | 39 | Sağlayıcı sözleşmesi, maliyet, kayıt/oynatma |
 | `test_library.py` | 28 | Kütüphane, yol koruması |
+| `test_web_api.py` | 26 | HTTP uçları, anahtar sızıntısı, yapılandırma uyarıları |
 | `test_reviewer_parsing.py` | 25 | T4 — sahte KABUL |
 | `test_selection.py` | 24 | Model seçimi, sağlayıcı-farkında varsayılanlar |
 | `test_feasibility.py` | 23 | Uygulanabilirlik ölçütü |
 | `test_key_vault.py` | 22 | T7, T8 |
 | `test_mcp.py` | 22 | MCP sunucusu + istemcisi |
-| `test_web_api.py` | 22 | HTTP uçları, anahtar sızıntısı |
-| `test_sandbox.py` | 18 | T2, T4b — gerçek süreç |
+| `test_sandbox.py` | 20 | T2, T4b, çıktı belirlenimliliği |
+| `test_agent_base.py` | 17 | JSON çıkarma ve onarımın **sınırları** |
+| `test_loop.py` | 17 | Uçtan uca, red/revizyon döngüsü, kesilme |
 | `test_transcript.py` | 16 | Mesaj zarfı, dışa aktarım |
-| `test_loop.py` | 15 | Uçtan uca, red/revizyon döngüsü |
 | `test_limits.py` | 13 | T6 |
 | `test_prompt_ornekleri.py` | 10 | Prompt–şema sapması |
 
@@ -365,5 +384,6 @@ Her kabul kriterinin bir teste karşılığı vardır. Boş kalan satırlar **he
 
 | Sürüm | Tarih | Değişiklik |
 |---|---|---|
+| 1.2 | 15.08.2026 | Beş yeni kabul kriteri (KK-30…34): karışık kurulum uyarısı, anahtarın tüm rollere uygulanması, kaset–model uyuşmazlığı uyarısı, agent hattı görünümü, JSON onarımının sınırları. Test dağılımı 16 dosya / 411 teste güncellendi. R8 eklendi: **sistemin bildiği bir sorunu kullanıcıya söylememesi** — üç kez gerçekleşti |
 | 1.1 | 15.08.2026 | Sonradan eklenen üç story (US-13 model seçimi, US-14 transkript geçmişi, US-15 tam ekran oynatıcı) ve beş kabul kriteri (KK-25…29). R7 (sunum katmanı) gerçekleşmiş risk olarak işaretlendi; R1 gerçekleşmedi olarak kapandı. FO ölçümleri gerçek değerlerle güncellendi. İzlenebilirlik matrisi 29 satıra, test dağılımı 15 dosya / 379 teste çıktı. A6 açık maddesi eklendi: **red/revizyon döngüsü gerçek koşuda henüz gözlenmedi** |
 | 1.0 | 14.08.2026 | İlk sürüm — 12 user story, 24 kabul kriteri, uygulanabilirlik ölçütü, varsayım/kısıt/risk tabloları, izlenebilirlik matrisi |

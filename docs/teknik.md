@@ -232,6 +232,18 @@ Maliyet harcama tavanını beslediği için hesap **yukarı yuvarlanır**: bilin
 
 Bunun bedeli, fiyatı bilinmeyen modellerde şişik bir rakam. Bu yüzden `Usage.fiyat_bilinen` alanı var ve transkripte `maliyet_ust_sinir` sistem mesajı yazılıyor — rakam kesin bir değermiş gibi sunulmaz.
 
+### 5.5 LLM çıktısının dayanıklılığı
+
+Üç agent da yapısal JSON döndürür ve modeller bunu üç şekilde bozar. Her biri farklı ele alınır:
+
+| Sorun | Tanıma | Yanıt |
+|---|---|---|
+| **Kesilme** — token tavanına takılma | `durdurma_nedeni` ∈ {`max_tokens`, `length`}; JSON ayrıştırmasından **önce** kontrol edilir | Bütçe 1.5 kat büyütülür (tavan 64.000), modele **daha kısa yaz** denir, bir kez yeniden denenir (G4r) |
+| **Bozuk JSON** — kaçışsız satır sonu, fazladan virgül | Katı ayrıştırma başarısız | `repair_json()` tek geçişte onarır; transkripte `json_onarildi` yazılır |
+| **Şema uyumsuzluğu** | Pydantic doğrulaması | Hata modele geri verilir, bir kez yeniden denenir |
+
+**Onarımın yapmadıkları, yaptıklarından önemlidir.** Tırnak türü değiştirme, yorum silme ve **eksik parantez tamamlama** bilinçli olarak dışarıda bırakılmıştır. Sonuncusu en cazip olanıdır: kesilmiş bir JSON'u kapatmak koşuyu "kurtarır" ama kurtardığı şey yarım bir dosyadır — sistem onu geçerli sayar, testler koşar, bozuk çıktı sessizce "başarılı" olur. `test_agent_base.py` içindeki 17 testin yarısı bu sınırı sınar.
+
 ---
 
 ## 6. Güvenlik
@@ -281,7 +293,19 @@ Red, denetleyiciye **kritik bulgu** olarak iletilir ve kod hiç çalıştırılm
 
 `allow-same-origin` bilinçli olarak verilmez: verilseydi oyun ana sayfayı script'leyip onun ağ erişimiyle bu CSP'yi baypas edebilirdi.
 
-### 6.5 Tehdit özeti
+### 6.5 Koşu öncesi yapılandırma uyarıları
+
+Güvenlik yalnızca kötü niyete karşı değildir; **öngörülebilir başarısızlığı önceden söylemek** de aynı ailedendir. Üç durum koşu başlamadan bildirilir:
+
+| Durum | Neden başarısız olur |
+|---|---|
+| Karışık kurulum (bazı roller canlı, bazıları `replay`) | Canlı agent özgün çıktı üretir, replay rolü o çıktı için kaset bulamaz |
+| `replay` modunda kasetlerde olmayan model seçili | Kaset parmak izi modeli içerir; seçim değişince tüm kasetler geçersizdir |
+| Anahtarın tek role uygulanması | Diğer roller sessizce `replay`'de kalır |
+
+Üçüncüsü uyarıyla **değil varsayılanla** çözüldü: anahtar formunun rol seçicisi artık "tüm roller"de başlar. Uyarı hatayı görünür kılar; doğru varsayılan onu oluşmaz kılar.
+
+### 6.6 Tehdit özeti
 
 | # | Tehdit | Doğrulayan test |
 |---|---|---|
@@ -377,5 +401,6 @@ Uygulaması **prompt değişikliği** gerektirir; eğitim kuralı K4 gereği pro
 
 | Sürüm | Tarih | Değişiklik |
 |---|---|---|
+| 1.2 | 15.08.2026 | §2'ye G4r/G4e (uygulayıcı yeniden denemesi); §5.3'e kayıt/oynatmanın girdi belirlenimliliği koşulu; §5.5 JSON onarımı ve sınırları; §6.6 koşu öncesi yapılandırma uyarıları. Ölçümler ve test sayısı (411) güncellendi |
 | 1.1 | 15.08.2026 | §5.1'e sağlayıcı-farkında varsayılanlar ve seçim öncelikli karar sırası; §5.1.1 model kataloğu, §5.1.2 maliyet ayarı tablosu. §4'e model seçimi uçları. §7'ye 2048 koşusu, toplam harcama ve "mekanizma test edildi, sahada gözlenmedi" notu. Test sayısı 379 |
 | 1.0 | 15.08.2026 | İlk sürüm — mimari, veri modeli, API sözleşmesi, güvenlik, ölçümler, bilinen sınırlar |
