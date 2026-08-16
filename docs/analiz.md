@@ -367,6 +367,36 @@ Her kabul kriterinin bir teste karşılığı vardır. Boş kalan satırlar **he
 
 ---
 
+## 10.1 Ana mekanizmanın canlı kanıtı
+
+Projenin ayırt edici iddiası "agent'lar birbirini reddedebilir"di. 16 Ağustos'taki snake koşusunda bu **gerçek bir çağrı zincirinde** gözlendi:
+
+| Tur | Agent | Sonuç |
+|---|---|---|
+| 1 | planlayıcı | `snake`, 7 kabul kriteri |
+| 1 | uygulayıcı | 3 dosya · 3 MCP çağrısı |
+| 1 | sistem | `node --test` → **geçen 6, kalan 1** |
+| 1 | **denetleyici** | **RED** — kritik bulgu, dosya ve satır belirterek |
+| 2 | uygulayıcı | Yalnızca bulguyu hedefleyen düzeltme |
+| 2 | sistem | `node --test` → **geçen 7, kalan 0** |
+| 2 | denetleyici | **KABUL** |
+
+Denetleyicinin red gerekçesi:
+
+> *"AC3 başarısız: `ilerlet()` yem yenince skoru artırmadan önce `carpisti()` yeni başı kendi yılan dizisinin ilk elemanıyla çarpışmış sayıyor. `logic.test.js:45` AC3 testi `4 !== 5` ile başarısız."*
+
+Uygulayıcının revizyon notu:
+
+> *"Önceki RED bulgusunu hedeflemek için `ilerlet()` içinde çarpışma kontrolünü yeni başı yalnızca aday yılanın gövdesiyle karşılaştıracak şekilde düzenledim."*
+
+Bu, üç ayrı tasarım kararının aynı anda çalıştığını gösteriyor: kabul kriterleri **teste çevrilebilecek** kadar somut yazıldı (AC3), denetleyici **dosya ve satır** verecek kadar somut reddetti, uygulayıcı **kapsamı bulguyla sınırlı** tutarak düzeltti. Üçü de prompt'lara yazılı kurallar.
+
+**Aynı koşuda ikinci bir kanıt:** 1. turda `json_onarildi` sistem mesajı düştü — uygulayıcının JSON çıktısı katı ayrıştırmadan geçmedi ve onarım devreye girdi. O gün eklenen onarım geçişi olmasaydı koşu G4r/G4e yoluna girecekti.
+
+**Maliyet:** 5 çağrı, 22.215 girdi / 9.778 çıktı token. Sistem ≤$0,711 raporladı (OpenAI fiyatları bilinmediği için üst sınır).
+
+---
+
 ## 11. Açık maddeler
 
 | # | Madde | Kapanacağı yer |
@@ -375,7 +405,7 @@ Her kabul kriterinin bir teste karşılığı vardır. Boş kalan satırlar **he
 | A2 | ~~Oyun başına gerçek token ve maliyet~~ | ✅ Ölçüldü: $0.179–0.221, ~13.700 token |
 | A3 | ~~"Satranç LLM için çok zor" iddiası~~ | ✅ Kanıtlandı: sistem 24 özel durum sayarak reddetti |
 | A4 | Kural kartı MCP aracı | Kapsam dışı bırakıldı — filesystem MCP sunucusu şartı zaten karşılıyor |
-| A6 | **Red/revizyon döngüsü gerçek koşuda henüz gözlenmedi.** Dört koşunun dördü de tek turda kabul aldı. Mekanizma `test_loop.py` ile uçtan uca sınandı ama canlı örneği kayıtlı değil | Demo öncesi bir koşu denenecek: planlayıcı güçlü + uygulayıcı zayıf model, kural karmaşıklığı yüksek oyun (othello). Çıkmazsa **öyle raporlanacak** — red garantilemek için prompt'a müdahale edilmeyecek |
+| A6 | ~~Red/revizyon döngüsü gerçek koşuda henüz gözlenmedi~~ | ✅ **Kapandı** (16.08) — snake koşusunda denetleyici 1. turda RED verdi, uygulayıcı düzeltti, 2. turda KABUL geldi. Ayrıntı §10.1 |
 | A5 | **Sunum katmanı boşluğu (S6/R7) prompt'larla kapatılsın mı?** | Kural K4 gereği prompt değişikliği insana ait. İki aday: (1) planlayıcı prompt'una "işaret→oyuncu/renk eşlemesi `logic.js`'te dışa aktarılmalı ve test edilmeli" kuralı; (2) denetleyici prompt'una "sunumun mantıkla **anlamsal** tutarlılığı denetlenir; estetik denetlenmez" ayrımı. Karar insanda |
 
 ---

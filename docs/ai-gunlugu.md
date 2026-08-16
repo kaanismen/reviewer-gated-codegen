@@ -1071,6 +1071,58 @@ Sistemik kapatıldı: replay modunda seçili model kasetlerde yoksa koşudan **�
 
 **Örüntü:** son üç kaydın üçü de aynı aileden. Sistem bir sorunu **önceden biliyor** ama kullanıcıya söylemiyor. Karışık kurulum, kaset-model uyuşmazlığı, "ayar kayboldu" görüntüsü. Üçünde de düzeltme yeni bilgi üretmek değil, var olan bilgiyi doğru yere koymaktı.
 
+### Kayıt 4.10 — Ana mekanizma sonunda sahada gözlendi
+
+**Tetikleyen:** Kullanıcı ekran görüntülerini paylaştı (demo hazırlığı).
+
+**Karar sahibi:** İnsan — koşuyu yaptı ve mekanizmayı ortaya çıkaran yapılandırmayı kurdu.
+
+### A6 kapandı
+
+Projenin ayırt edici iddiası "agent'lar birbirini reddedebilir"di ve **beş gerçek koşunun beşi de tek turda kabul almıştı.** Belgelere dürüstçe şöyle yazılmıştı: *"mekanizma test edilmiştir, sahada gözlenmemiştir."*
+
+16 Ağustos'taki snake koşusunda gözlendi:
+
+| Tur | Olay |
+|---|---|
+| 1 | planlayıcı → 7 kabul kriteri |
+| 1 | uygulayıcı → 3 dosya (**JSON onarıldı**) |
+| 1 | `node --test` → geçen 6, **kalan 1** |
+| 1 | denetleyici → **RED** |
+| 2 | uygulayıcı → hedefli düzeltme |
+| 2 | `node --test` → geçen 7, **kalan 0** |
+| 2 | denetleyici → **KABUL** |
+
+### Neden bu koşu farklıydı
+
+Kullanıcı üç rolü **üç farklı OpenAI modeline** almıştı: planlayıcı `gpt-5.6-sol`, uygulayıcı `gpt-5.6-luna`, denetleyici `gpt-5.5`. Daha önceki koşularda planlayıcı ve denetleyici çoğunlukla aynı ailedendi.
+
+Kayıt 4.x'te tahmin edilen buydu: **güçlü planlayıcı + farklı bir uygulayıcı = red olasılığı artar.** Tahmin doğrulandı ama planlanarak değil, kullanıcı kendi kurulumunu denerken gerçekleşti.
+
+### Üç kural aynı anda çalıştı
+
+Red gerekçesi:
+
+> *"AC3 başarısız: `ilerlet()` yem yenince skoru artırmadan önce `carpisti()` yeni başı kendi yılan dizisinin ilk elemanıyla çarpışmış sayıyor. `logic.test.js:45` AC3 testi `4 !== 5` ile başarısız."*
+
+Uygulayıcının revizyon notu:
+
+> *"Çarpışma kontrolünü yeni başı yalnızca aday yılanın gövdesiyle karşılaştıracak şekilde düzenledim."*
+
+Burada üç ayrı prompt kuralının birlikte işlediği görülüyor: kriter **teste çevrilebilecek** kadar somut yazılmış (AC3), red **dosya ve satır** verecek kadar somut, revizyon **kapsamı bulguyla sınırlı**. Üçü de insan tarafından yazılmış kurallar (K4).
+
+Bu, prompt'ların kalitesinin sistem davranışına doğrudan yansıdığının en net kanıtı — ve rubrikteki "prompt tasarımı" kaleminin karşılığı.
+
+### İkinci kanıt: onarım gerçek bir koşuyu kurtardı
+
+Aynı koşunun 1. turunda `json_onarildi` mesajı düştü. Kayıt 4.8'de eklenen onarım geçişi olmasaydı uygulayıcı çıktısı reddedilecek ve koşu yeniden deneme yoluna girecekti.
+
+Onarım aynı gün, minesweeper hatası üzerine eklenmişti. Birim testleriyle doğrulanmış ama gerçek koşuda tetiklenmemişti — **birkaç saat sonra tetiklendi ve işini gördü.**
+
+### Denetim tablosuna etkisi
+
+Açık kalan tek "gözlenmedi" maddesi kapandı. Geriye yalnızca bilinçli sınırlar kaldı: S2 (statik denetimin atlatılabilirliği), S5 (kimlik doğrulama yok), S6 (sunum katmanı doğrulanmıyor).
+
 ---
 
 # Karar kütüğü — tam liste

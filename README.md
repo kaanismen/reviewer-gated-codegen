@@ -77,10 +77,18 @@ Hiçbir otomatik test gerçek API çağrısı yapmaz.
 
 | Görev | Sağlayıcı | Sonuç | Tur | Maliyet |
 |---|---|---|---|---|
+| **snake** | OpenAI (üç farklı model) | `KABUL_EDILDI` — **RED → revizyon → KABUL** | **2** | ≤$0,711 |
 | tic-tac-toe | Anthropic | `KABUL_EDILDI`, 12 test geçti | 1 | $0,221 |
 | connect-4 | Anthropic | `KABUL_EDILDI`, 9 test geçti | 1 | $0,179 |
-| snake | OpenAI | `KABUL_EDILDI`, 5 test geçti | 1 | ≈$0,10 |
 | satranç | Anthropic | `KAPSAM_DISI` — 24 özel durum | 1 | $0,012 |
+
+### Ana mekanizma: denetleyici gerçekten reddediyor
+
+Snake koşusunda denetleyici 1. turda **RED** verdi ve gerekçesini dosya-satır düzeyinde yazdı:
+
+> *"AC3 başarısız: `ilerlet()` yem yenince skoru artırmadan önce `carpisti()` yeni başı kendi yılan dizisinin ilk elemanıyla çarpışmış sayıyor. `logic.test.js:45` AC3 testi `4 !== 5` ile başarısız."*
+
+Uygulayıcı **yalnızca bu bulguyu** hedefleyerek düzeltti; 2. turda testler 7/7 geçti ve karar KABUL oldu. Bu, sistemin "üç agent sırayla konuştu"dan farkının çalışan kanıtıdır.
 
 Model seçimi doğrudan bir maliyet kaldıracıdır: varsayılan kurulum $0,22,
 dengeli kurulum (uygulayıcı Haiku, denetleyici Sonnet) ≈$0,12.

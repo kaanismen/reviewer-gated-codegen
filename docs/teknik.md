@@ -333,12 +333,33 @@ Güvenlik yalnızca kötü niyete karşı değildir; **öngörülebilir başarı
 | satranç | Anthropic | `KAPSAM_DISI` | 1 | 74 / 1.040 | $0,012 | ~15 sn |
 | snake | **OpenAI** (`gpt-5.4`) | `KABUL_EDILDI` | 1 | 13.141 / 5.126 | ≈$0,10 ¹ | ~40 sn |
 | 2048 | Anthropic | `KABUL_EDILDI` | 1 | — | — | — |
+| **snake** | **OpenAI** karışık ² | `KABUL_EDILDI` | **2** | 22.215 / 9.778 | ≤$0,711 | ~40 sn |
+
+² Planlayıcı `gpt-5.6-sol`, uygulayıcı `gpt-5.6-luna`, denetleyici `gpt-5.5` — üç rol, üç farklı model. Rol bazlı model seçiminin çalıştığının kanıtı.
 
 ¹ Sistem ≤$0,388 raporladı (bilinmeyen fiyat → üst sınır); kullanıcı raporuna göre gerçek ≈$0,10, yani üst sınır ~4 kat yüksek. `pricing.py`'ye tahminî bir fiyat **eklenmedi**: harcama tavanını besleyen bir tabloya doğrulanmamış sayı yazmak, bu projenin baştan beri kaçındığı hatadır.
 
 **Toplam harcama: ≈$0,51** (beş koşu, biri gerekçeli ret).
 
-**Dört koşunun dördü de tek turda kabul aldı.** Bu, red/revizyon döngüsünün — sistemin ana mekanizmasının — gerçek koşuda henüz gözlenmediği anlamına gelir. Mekanizma `test_loop.py` içinde uçtan uca sınanmıştır (red → revizyon → kabul, ve aynı gerekçeyle iki red → `LIMIT_ASILDI`), ancak canlı bir örneği kayıtlı değildir. Dürüst ifade: **mekanizma test edilmiştir, sahada gözlenmemiştir.**
+### 7.1.1 Red/revizyon döngüsü — canlı kanıt
+
+İlk beş koşunun hepsi tek turda kabul almıştı; sistemin ana mekanizması yalnızca `test_loop.py` içinde sınanmıştı. **16.08.2026'daki snake koşusunda mekanizma gerçek bir çağrı zincirinde gözlendi:**
+
+| Tur | Olay | Ölçüm |
+|---|---|---|
+| 1 | planlayıcı → 7 kabul kriteri | 3.793 → 604 tok |
+| 1 | uygulayıcı → 3 dosya (JSON **onarıldı**) | 2.734 → 4.014 tok |
+| 1 | `node --test` | geçen 6, **kalan 1** |
+| 1 | denetleyici → **RED** | 6.508 → 571 tok |
+| 2 | uygulayıcı → hedefli düzeltme | 2.937 → 4.191 tok |
+| 2 | `node --test` | geçen 7, **kalan 0** |
+| 2 | denetleyici → **KABUL** | 6.243 → 398 tok |
+
+Red gerekçesi dosya ve satır düzeyinde somuttu (`logic.test.js:45`, `4 !== 5`), uygulayıcı kapsamı bulguyla sınırlı tutarak düzeltti. Üç prompt kuralı (test edilebilir kriter, somut red gerekçesi, sınırlı revizyon) aynı anda çalıştı.
+
+Toplam: 5 çağrı, 22.215 girdi / 9.778 çıktı token, ≤$0,711 (üst sınır).
+
+**Aynı koşu §5.5'i de doğruladı:** 1. turda `json_onarildi` mesajı düştü — onarım geçişi olmasaydı koşu yeniden deneme yoluna girecekti.
 
 **Sağlayıcı değişimi kodda sıfır değişiklik gerektirdi** — yalnızca iki ortam değişkeni.
 
