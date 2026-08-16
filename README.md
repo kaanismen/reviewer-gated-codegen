@@ -24,6 +24,8 @@ DENETLEYİCİ ─► yapısal JSON ile KABUL / RED
    └── RED ──► revizyon turu ──► UYGULAYICI
 ```
 
+![Agent hattı — hangi agent ne yapıyor, canlı](docs/gorseller/agent-hatti.png)
+
 ---
 
 ## 60 saniyede deneyin — API anahtarı gerekmez
@@ -89,6 +91,16 @@ Snake koşusunda denetleyici 1. turda **RED** verdi ve gerekçesini dosya-satır
 > *"AC3 başarısız: `ilerlet()` yem yenince skoru artırmadan önce `carpisti()` yeni başı kendi yılan dizisinin ilk elemanıyla çarpışmış sayıyor. `logic.test.js:45` AC3 testi `4 !== 5` ile başarısız."*
 
 Uygulayıcı **yalnızca bu bulguyu** hedefleyerek düzeltti; 2. turda testler 7/7 geçti ve karar KABUL oldu. Bu, sistemin "üç agent sırayla konuştu"dan farkının çalışan kanıtıdır.
+
+![RED turu ve revizyon — transkript ayrıntısı](docs/gorseller/red-revizyon.png)
+
+Üretilen oyun aynı sayfada oynanır:
+
+![Üretilen snake oyunu](docs/gorseller/oyun.png)
+
+Ölçütü geçemeyen istek ise çökmeyle değil **gerekçeli retle** sonuçlanır:
+
+![Satranç — KAPSAM_DISI ve gerekçesi](docs/gorseller/kapsam-disi.png)
 
 Model seçimi doğrudan bir maliyet kaldıracıdır: varsayılan kurulum $0,22,
 dengeli kurulum (uygulayıcı Haiku, denetleyici Sonnet) ≈$0,12.

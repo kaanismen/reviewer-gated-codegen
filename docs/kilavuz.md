@@ -29,7 +29,7 @@ docker compose up
 
 **http://localhost:8000**
 
-> 📸 *Ekran görüntüsü 1 — açılış ekranı*
+![Açılış ekranı](gorseller/acilis.png)
 
 ### Durdurma
 
@@ -72,7 +72,7 @@ Bu modda **testler gerçekten koşar** ve oyun gerçekten üretilir; yalnızca L
 | Sağlayıcı | anthropic · openai |
 | Anahtar | API anahtarınız |
 
-> 📸 *Ekran görüntüsü 2 — ayarlar paneli, anahtar girişi ve rol tablosu*
+![Ayarlar paneli — roller, model kataloğu, anahtar girişi ve limitler](gorseller/ayarlar.png)
 
 Kaydettiğinizde yalnızca **maskeli parmak izi** görünür (`••••9f3a`). Anahtarın kendisi hiçbir yanıtta geri dönmez.
 
@@ -126,7 +126,7 @@ snake oyunu yaz, yılan yem yiyince uzasın ve kendine çarpınca oyun bitsin
 
 **üret** düğmesine basın. Transkript canlı akmaya başlar:
 
-> 📸 *Ekran görüntüsü 3 — canlı transkript, üç agent mesajı görünürken*
+![Agent hattı — çalışan agent, süresi ve özeti](gorseller/agent-hatti.png)
 
 | Renk | Agent | Ne gösterir |
 |---|---|---|
@@ -145,7 +145,7 @@ Kabul edilirse oyun kendiliğinden aşağıda açılır.
 
 ## 5. Oyunları oynama
 
-> 📸 *Ekran görüntüsü 4 — üretilmiş bir oyun oynanırken*
+![Üretilmiş bir oyun oynanırken](gorseller/oyun.png)
 
 | Düğme | İşlev |
 |---|---|
@@ -183,6 +183,8 @@ Testler geçti, sır taraması temiz, oyun oynanabilir.
 ### `KAPSAM_DISI` ⚠️ — hata değil
 
 Görev **uygulanabilirlik ölçütünü** geçemedi. Sistem çökmedi; değerlendirdi ve gerekçesiyle reddetti.
+
+![Satranç — KAPSAM_DISI ve gerekçesi](gorseller/kapsam-disi.png)
 
 Örnek — satranç istendiğinde:
 
