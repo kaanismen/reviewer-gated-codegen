@@ -1123,6 +1123,44 @@ Onarım aynı gün, minesweeper hatası üzerine eklenmişti. Birim testleriyle 
 
 Açık kalan tek "gözlenmedi" maddesi kapandı. Geriye yalnızca bilinçli sınırlar kaldı: S2 (statik denetimin atlatılabilirliği), S5 (kimlik doğrulama yok), S6 (sunum katmanı doğrulanmıyor).
 
+### Kayıt 4.11 — Teslim paketi ve kapanış
+
+**Prompt (özet):** ekran görüntülerinin yerleştirilmesi, iki demo kaydının birleştirilmesi, teslim zip'inin üretilmesi.
+
+**Karar sahibi:** İnsan — demoyu çekti, ekran görüntülerini aldı, sunum dosyasının pakete girmemesine karar verdi.
+
+### Denetim bulgusu — AI kendi aracını yanlış kullandı ve yanlış sonuç bildirdi
+
+Ekran görüntüleri aranırken `Get-ChildItem -Include *.png` kullanıldı, **`-Recurse` veya yol sonunda `\*` olmadan.** PowerShell bu biçimde sessizce boş döner. AI bunu "klasörde dosya yok" diye yorumladı ve kullanıcıya panodan tek tek kopyalamasını önerdi.
+
+Kullanıcı klasörü gösterince arama düzeltildi ve **dosyalar zaten oradaydı.** Altı görüntü okunup içeriklerinden tanındı ve doğru adlarla yerleştirildi.
+
+Bu, denetim özetindeki 2 numaralı örüntünün yeni bir yüzü: AI bir aracın sessiz başarısızlığını **veri olarak** kabul etti. "Boş döndü" ile "boş" aynı şey değil. Aynı hata Kayıt 4.6'da imaj derlememekle, Kayıt 4.2'de ortam değişkenini elle vermekle yapılmıştı — üçünde de sorulmayan soru aynı: *"bu sonuç gerçekten sonuç mu, yoksa benim kurgum mu?"*
+
+### Demo videosu
+
+İki kayıt (2:01 ve 3:51) birleştirildi. Her ikisi de h264 / 1920×1032 / 59.94 fps / AAC olduğu için **yeniden kodlama yapılmadı** — akış kopyalamayla kayıpsız birleştirildi, `+faststart` uygulandı. Sonuç 5:52.
+
+Sisteme `ffmpeg` kurulmadı; Docker zaten kullanımda olduğu için konteynerden çalıştırıldı. Aynı ilke projenin başından beri geçerli: host'a kurulum yok.
+
+### Teslim paketi
+
+`git archive` ile üretildi — paket **birebir depo içeriğidir**, yerel artık taşımaz. Doğrulama, üretimle yetinilmeyip eğitmenin yapacağı şeyin tekrarlanmasıyla yapıldı:
+
+| Adım | Sonuç |
+|---|---|
+| Zip'i aç, `docker compose up` | 4 saniye |
+| Sağlık ucu | `replay` modu, 4 kaset, uyarı yok |
+| `tic tac toe...` | `KABUL_EDILDI` |
+| `satranc...` | `KAPSAM_DISI` |
+| `docker compose run --rm test` | **411 test geçti** |
+
+Eğitmenlerin kendi sunum dosyası pakete ve depoya **girmiyor** (insan kararı); `.gitignore`'a eklendi.
+
+### Kapanış
+
+Beş zorunlu teslimin tamamı hazır. Projenin son hâli: 30 commit, 411 test, altı üretilmiş oyun, bir gerekçeli ret, ≈$1,10 harcama.
+
 ---
 
 # Karar kütüğü — tam liste
@@ -1188,12 +1226,13 @@ Rubriğin istediği "denetim raporu" budur. Sıralama kronolojik.
 | 21 | **Kayıt/oynatma denetleyici adımında baştan beri kırıkmış** | **Temiz klon testi** | `duration_ms` her koşuda farklı → parmak izi asla tutmaz |
 | 22 | Karışık kurulum sessizce başarısız oluyordu | **İnsan** (demo hazırlığı) | Bilgi sistemde vardı, görülecek yerde değildi |
 | 23 | Kalmış model seçimi kasetleri geçersiz kılıyordu | AI (UI doğrulaması sırasında) | Koşudan önce uyarı |
+| 24 | AI, `-Include` parametresini yanlış kullanıp "dosya yok" sonucuna vardı | **İnsan** | Dosyalar zaten oradaydı; aracın sessiz başarısızlığı veri sanıldı |
 
 ## Bulguların dağılımı
 
 | Yakalayan | Adet |
 |---|---|
-| **İnsan** (kullanma, oynama, hata raporu) | **11** |
+| **İnsan** (kullanma, oynama, hata raporu) | **12** |
 | Otomatik test | 6 |
 | AI'ın kendi gözden geçirmesi | 5 |
 | Doğrudan ölçüm / temiz klon | 3 |
@@ -1204,7 +1243,7 @@ Rubriğin istediği "denetim raporu" budur. Sıralama kronolojik.
 
 **1. AI kendi belgelediği sakıncayı yine de önerebiliyor.** Bulgu 1'de S1 sınırını yazan da o çözümü öneren de AI'dı. Ders: AI'ın yazdığı "bilinen sınırlar" bölümü kabul edilecek bir teslim değil, sorgulanacak bir kontrol listesidir.
 
-**2. AI kendi geçici çözümüyle hatanın üstünü örtüyor.** Bulgu 2 (`RLIMIT_AS`), 7 (`grant_access`) ve 15 (`MODEL_*` elle verildi) aynı kalıp: AI bir engeli elle aşıyor, aşma işlemini "yapılandırma ayrıntısı" diye not edip geçiyor. Sorulmayan soru hep aynı: *"bunu elle yapmasaydım ne olurdu?"*
+**2. AI kendi kurgusunu veri sanıyor.** Bulgu 2 (`RLIMIT_AS`), 7 (`grant_access`), 15 (`MODEL_*` elle verildi) ve 24 (`-Include` sessizce boş döndü) aynı kalıp: AI bir engeli elle aşıyor veya bir aracın sessiz başarısızlığını sonuç kabul ediyor, sonra o zemin üzerine akıl yürütüyor. Sorulmayan soru hep aynı: *"bu sonuç gerçekten sonuç mu, yoksa benim kurgum mu?"*
 
 **3. Test yalnızca baktığı yeri korur.** Bulgu 12 en keskin örnek: 379 test `logic.js`'i kusursuz doğruluyor, `game.html` hiçbirinin görüş alanında değil. Bulgu 21 aynı ailenin ikinci üyesi: uçtan uca testler kayıt/oynatmayı hiç kullanmadığı için mekanizmanın ön koşulu üç gün boyunca sınanmadı. Sistemin garantisi göründüğünden dardır.
 
@@ -1223,17 +1262,24 @@ Rubriğin istediği "denetim raporu" budur. Sıralama kronolojik.
 
 ## Günlüğün durumu
 
-Bu günlük 15 Ağustos 2026 itibarıyla **tamamdır**: 26 kayıt, 36 kararlık kütük, 23 maddelik denetim özeti. Kalan tek iş demo kaydıdır; çekildiğinde buraya son bir kayıt eklenecektir.
+Bu günlük 16 Ağustos 2026 itibarıyla **kapanmıştır**: 28 kayıt, 36 kararlık kütük, 24 maddelik denetim özeti. Beş zorunlu teslimin tamamı hazır.
 
 ### Sayılarla süreç
 
 | | |
 |---|---|
-| Süre | 2 gün (14–15 Ağustos 2026) |
-| Commit | 25 |
+| Süre | 3 gün (14–16 Ağustos 2026) |
+| Commit | 30 |
 | Test | 411, ~18 sn, sıfır gerçek API çağrısı |
 | Üretilen oyun | tic-tac-toe, connect-4, snake, 2048, flappy bird, minesweeper |
 | Gerekçeli ret | satranç — 24 özel durum sayarak |
+| Red/revizyon turu | 1 (snake) — sistemin ana mekanizması sahada gözlendi |
 | Gerçek harcama | ≈$1,10 |
 | Karar | 36 (19'u doğrudan insan) |
-| Denetim bulgusu | 23 (11'ini insan yakaladı) |
+| Denetim bulgusu | 24 (12'sini insan yakaladı) |
+
+### Bu günlüğün asıl değeri
+
+Üretilen oyunlar birkaç yüz satır JavaScript. Günlük ise üç günde AI ile çalışırken **nerede yanıldığının, kimin yakaladığının ve neyi bilinçli olarak düzeltmediğinin** kaydı.
+
+Dört örüntü üçer kez tekrarlandı ve her seferinde farklı kılıkta geldi. Bir sonraki projede yine gelecekler; bu günlük onları tanımayı kolaylaştırmak için var.

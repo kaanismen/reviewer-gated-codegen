@@ -143,7 +143,7 @@ Yedi fazın altısı tamamlandı; plan iki günde bitti, üçüncü gün demo ve
 | Faz 3 — Sağlayıcı katmanı | ✅ | 4 sağlayıcı, kayıt/oynatma, 10 kaset |
 | Faz 4 — Agent'lar ve döngü | ✅ | Gerçek MCP sunucusu; **4 oyun üretildi** |
 | Faz 5 — Arayüz | ✅ | Sohbet kutusu, SSE canlı transkript, oynatıcı, kütüphane |
-| Faz 6 — Kanıt ve teslim | ◐ | 4 belge hazır; **demo ve ekran görüntüleri kaldı** |
+| Faz 6 — Kanıt ve teslim | ✅ | 4 belge, 6 ekran görüntüsü, 5:52 demo videosu, doğrulanmış teslim zip'i |
 
 **Plan dışı eklenenler** (kullanıcı istekleriyle):
 
@@ -169,7 +169,18 @@ Yedi fazın altısı tamamlandı; plan iki günde bitti, üçüncü gün demo ve
 
 §4'teki dört kesme adımının **hiçbiri uygulanmadı**. Süre kısıtı bağlayıcı olmadı; hem OpenAI hem Ollama sağlayıcıları, dört oyun ve SSE canlı akış korundu.
 
-**Kalan zorunlu teslim:** 5 dakikalık demo kaydı. Analiz, teknik, kılavuz ve AI günlüğü hazır; kılavuzda dört ekran görüntüsü yeri işaretli.
+**Beş zorunlu teslimin tamamı hazır** (16 Ağustos). Teslim paketi `git archive` ile üretildi ve **açılıp çalıştırılarak doğrulandı**: 4 saniyede ayağa kalktı, kayıtlı iki senaryo da anahtarsız çalıştı, 411 test geçti.
+
+### Planın tuttuğu ve tutmadığı yerler
+
+| | |
+|---|---|
+| Faz sırası | Değişmedi — bağımlılık analizi doğru çıktı |
+| Süre | Plan 3 gün, fazlar 2 günde bitti; 3. gün kullanıcı istekleri ve teslime gitti |
+| Kapsam daraltma | **Hiç kullanılmadı** — dört kesme adımının hiçbiri gerekmedi |
+| Plan dışı iş | Beş özellik eklendi, hepsi kullanıcı isteğiyle; ikisi altından **hata** çıkardı |
+
+Planın en isabetli kararı "deterministik olan, olmayandan önce gelir" ilkesiydi: durum makinesi ve güvenlik katmanları LLM'e hiç dokunmadan yazıldığı için, sistem ilk kez gerçek bir sağlayıcıyla çalıştırıldığında hata ayıklanacak tek yer LLM sınırıydı.
 
 **Paralel yürüyecek insan işi:** prompt yazımı (Gün 1 akşamı – Gün 2 sabahı, Faz 4'ten önce) ve eğitmenlere sorulacak üç açık soru (teslim formatı, demo canlı mı kayıt mı, bireysel mi ekip mi).
 

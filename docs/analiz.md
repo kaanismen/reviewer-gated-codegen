@@ -260,15 +260,15 @@ Sabit bir oyun listesi, "başa çıkabileceğimiz karmaşıklık" için **kötü
 
 ## 7. Kısıtlar
 
-| # | Kısıt | Kaynağı |
-|---|---|---|
-| K1 | Toplam geliştirme süresi 3 gün (14–16 Ağustos 2026) | Akademi takvimi |
-| K2 | Teslimlerin tamamı zorunlu; eksik teslim projeyi değerlendirme dışı bırakır | Program sunumu |
-| K3 | Demo 5 dakika: mutlu senaryo + en az bir hata senaryosu | Sunum |
-| K4 | **Prompt'lar insan tarafından yazılır**; kod üretimi AI'a bırakılabilir | Eğitmen kuralı |
-| K5 | Sistem eğitmenlerin kendi makinelerinde dockerize çalışmalıdır | Eğitmen kuralı |
-| K6 | Docker içinde Docker yoktur; Docker soketi bağlanmaz | Proje sahibi kararı |
-| K7 | Teslim zip dosyası; sürüm takibi private GitHub deposunda | Proje sahibi kararı |
+| # | Kısıt | Kaynağı | Durum |
+|---|---|---|---|
+| K1 | Toplam geliştirme süresi 3 gün (14–16 Ağustos 2026) | Akademi takvimi | ✅ Süreye uyuldu |
+| K2 | Teslimlerin tamamı zorunlu; eksik teslim projeyi değerlendirme dışı bırakır | Program sunumu | ✅ Beşi de hazır |
+| K3 | Demo 5 dakika: mutlu senaryo + en az bir hata senaryosu | Sunum | ✅ 16.08 çekildi (5:52) |
+| K4 | **Prompt'lar insan tarafından yazılır**; kod üretimi AI'a bırakılabilir | Eğitmen kuralı | ✅ `prompts/*.v1.md` insan yazımı; S6'nın çözümü de bu yüzden AI'a bırakılmadı |
+| K5 | Sistem eğitmenlerin kendi makinelerinde dockerize çalışmalıdır | Eğitmen kuralı | ✅ Temiz klon ve teslim zip'i açılıp çalıştırılarak doğrulandı |
+| K6 | Docker içinde Docker yoktur; Docker soketi bağlanmaz | Proje sahibi kararı | ✅ Süreç düzeyinde izolasyon |
+| K7 | Teslim zip dosyası; sürüm takibi private GitHub deposunda | Proje sahibi kararı | ✅ 30 commit; zip `git archive` ile üretildi |
 
 ---
 
