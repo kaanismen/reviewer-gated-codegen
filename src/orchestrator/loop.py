@@ -182,8 +182,8 @@ class Orchestrator:
         if bilinmeyen:
             self._system(
                 transcript, 1, "maliyet_ust_sinir",
-                "Şu modellerin fiyatı bilinmiyor, maliyet en pahalı bilinen "
-                f"tarifeden hesaplandı (üst sınır): {', '.join(sorted(set(bilinmeyen)))}",
+                "Pricing unknown for these models; cost was computed from the most "
+                f"expensive known rate (upper bound): {', '.join(sorted(set(bilinmeyen)))}",
             )
 
         planner = PlannerAgent(
@@ -227,8 +227,8 @@ class Orchestrator:
                     transcript,
                     tur,
                     "test_kosuldu",
-                    f"geçen={outcome.test_sonucu.gecen} kalan={outcome.test_sonucu.kalan} "
-                    f"çalıştırıldı={'evet' if outcome.calistirildi else 'hayır'}",
+                    f"passed={outcome.test_sonucu.gecen} failed={outcome.test_sonucu.kalan} "
+                    f"executed={'yes' if outcome.calistirildi else 'no'}",
                 )
 
                 onceki_denetim = self._review(
@@ -241,7 +241,7 @@ class Orchestrator:
                 if machine.state is State.LIMIT_EXCEEDED:
                     self._system(
                         transcript, tur, "ilerleme_yok",
-                        "aynı red gerekçesi üst üste tekrarlandı",
+                        "the same rejection reason repeated twice in a row",
                     )
                     return
 
@@ -311,8 +311,8 @@ class Orchestrator:
         if generated.onarildi:
             self._system(
                 transcript, tur, "json_onarildi",
-                "Uygulayıcının JSON çıktısı katı ayrıştırmadan geçmedi; "
-                "kaçışlanmamış satır sonu / fazladan virgül onarıldı.",
+                "The implementer's JSON did not pass strict parsing; unescaped "
+                "newlines / trailing commas were repaired.",
             )
 
         wire: ImplementerWire = generated.icerik

@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="tr">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Agent Oyun Atölyesi</title>
+<title>Agent Workshop</title>
 <style>
   :root {
     --bg:#0f1115; --panel:#171a21; --line:#262b36; --fg:#e6e9ef; --muted:#8b93a7;
@@ -137,85 +137,85 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Agent Oyun Atölyesi</h1>
-  <p class="sub">Planlayıcı → Uygulayıcı → Denetleyici · prompt'tan oynanabilir oyuna</p>
+  <h1>Agent Workshop</h1>
+  <p class="sub">Planner → Implementer → Reviewer · from a prompt to a playable game</p>
 
   <div class="panel">
-    <h2>Görev</h2>
+    <h2>Task</h2>
     <form id="taskForm">
-      <textarea id="taskText" placeholder="snake oyunu yaz, yılan yem yiyince uzasın"
+      <textarea id="taskText" placeholder="write a snake game where the snake grows when it eats"
                 maxlength="2000"></textarea>
-      <button type="submit" id="taskGo">üret</button>
+      <button type="submit" id="taskGo">generate</button>
     </form>
     <div id="uyari" class="uyari" hidden></div>
     <div id="senaryolar" hidden></div>
-    <p class="note" id="taskNote">Ölçütü geçen her oyun üretilebilir — tic-tac-toe,
-      connect-4, snake, pong, 2048… Kural karmaşıklığı fazla olanlar (satranç)
-      gerekçeyle reddedilir.</p>
+    <p class="note" id="taskNote">Any game that passes the feasibility criteria can be
+      built — tic-tac-toe, connect-4, snake, pong, 2048… Games with too much rule
+      complexity (chess) are refused, with reasons.</p>
   </div>
 
   <div class="panel" id="transcriptPanel" hidden>
-    <h2>Agent hattı</h2>
+    <h2>Agent pipeline</h2>
     <div class="pipeline" id="pipeline"></div>
     <p class="simdi" id="simdi"></p>
     <p class="note" id="runSummary"></p>
     <details id="detayPanel">
-      <summary>Transkript ayrıntısı</summary>
+      <summary>Transcript detail</summary>
       <div id="transcript"></div>
     </details>
   </div>
 
   <div class="panel" id="playerPanel" hidden>
     <div class="player-head">
-      <h2 id="playerTitle" style="margin:0">Oyun</h2>
-      <button type="button" id="playerFull">tam ekran</button>
-      <button type="button" class="ghost" id="playerTab">yeni sekmede aç</button>
+      <h2 id="playerTitle" style="margin:0">Game</h2>
+      <button type="button" id="playerFull">full screen</button>
+      <button type="button" class="ghost" id="playerTab">open in new tab</button>
     </div>
     <!-- allow-same-origin BİLİNÇLİ OLARAK YOK: verilseydi oyun ana sayfayı
          script'leyip onun ağ erişimiyle CSP'yi baypas edebilirdi.
          allow="fullscreen": tam ekran sandbox'ı KORUYARAK çalışır. -->
-    <iframe id="player" title="Üretilen oyun" sandbox="allow-scripts"
+    <iframe id="player" title="Generated game" sandbox="allow-scripts"
             allow="fullscreen" tabindex="0"></iframe>
-    <p class="note">Ok tuşlarıyla oynanan oyunlarda önce oyun alanına tıklayın —
-      odak oyunda değilken tuşlar sayfayı kaydırır. Tam ekran bu sorunu
-      tamamen ortadan kaldırır.</p>
+    <p class="note">For games played with the arrow keys, click the game area first —
+      while focus is elsewhere the keys scroll the page. Full screen removes the
+      problem entirely.</p>
   </div>
 
   <div class="panel">
-    <h2>Üretilen oyunlar</h2>
-    <div id="library"><p class="note">Yükleniyor…</p></div>
+    <h2>Generated games</h2>
+    <div id="library"><p class="note">Loading…</p></div>
   </div>
 
   <div class="panel">
     <details class="settings">
-      <summary>Ayarlar ve kurulum denetimi</summary>
+      <summary>Settings and setup audit</summary>
 
-      <h2 style="margin-top:18px">Agent sağlayıcıları ve modelleri</h2>
+      <h2 style="margin-top:18px">Agent providers and models</h2>
       <div id="roles"></div>
-      <div style="margin-top:10px"><button type="button" id="rolesSaveAll">tümünü kaydet</button></div>
+      <div style="margin-top:10px"><button type="button" id="rolesSaveAll">save all</button></div>
       <p class="note" id="rolesNote"></p>
       <form id="keyForm" autocomplete="off" style="margin-top:14px">
-        <select id="keyRole" aria-label="Rol">
-          <option value="hepsi">tüm roller</option>
-          <option value="planlayici">planlayıcı</option>
-          <option value="uygulayici">uygulayıcı</option>
-          <option value="denetleyici">denetleyici</option>
+        <select id="keyRole" aria-label="Role">
+          <option value="hepsi">all roles</option>
+          <option value="planlayici">planner</option>
+          <option value="uygulayici">implementer</option>
+          <option value="denetleyici">reviewer</option>
         </select>
-        <select id="keyProvider" aria-label="Sağlayıcı">
+        <select id="keyProvider" aria-label="Provider">
           <option value="anthropic">anthropic</option>
           <option value="openai">openai</option>
         </select>
-        <input id="keyValue" type="password" placeholder="API anahtarı"
+        <input id="keyValue" type="password" placeholder="API key"
                autocomplete="off" spellcheck="false">
-        <button type="submit">kaydet</button>
-        <button type="button" class="ghost" id="keyClear">temizle</button>
+        <button type="submit">save</button>
+        <button type="button" class="ghost" id="keyClear">clear</button>
       </form>
       <p class="note" id="keyNote"></p>
 
-      <h2 style="margin-top:22px">Kurulum denetimi</h2>
+      <h2 style="margin-top:22px">Setup audit</h2>
       <div id="checks"></div>
 
-      <h2 style="margin-top:22px">Etkin limitler</h2>
+      <h2 style="margin-top:22px">Effective limits</h2>
       <div class="grid" id="limits"></div>
     </details>
   </div>
@@ -237,9 +237,9 @@ function saglikYenile({ roller = true } = {}) {
   return fetch("/api/health").then(r => r.json()).then(h => {
     $("checks").innerHTML = [
       ["ok", "Python", h.python],
-      [h.node ? "ok" : "err", "Node", h.node || "BULUNAMADI"],
-      [h.konteyner ? "ok" : "warn", "Ortam", h.konteyner ? "konteyner" : "host"],
-      [h.runner_kullanicisi ? "ok" : "warn", "runner kullanıcısı", h.runner_kullanicisi ? "var" : "yok"],
+      [h.node ? "ok" : "err", "Node", h.node || "NOT FOUND"],
+      [h.konteyner ? "ok" : "warn", "Environment", h.konteyner ? "container" : "host"],
+      [h.runner_kullanicisi ? "ok" : "warn", "runner user", h.runner_kullanicisi ? "present" : "missing"],
       [h.workspaces_yazilabilir ? "ok" : "err", "workspaces", h.workspaces],
     ].map(r => rowHTML(...r)).join("");
 
@@ -263,9 +263,10 @@ function saglikYenile({ roller = true } = {}) {
     if (h.cevrimdisi_mod && (h.kayitli_senaryolar || []).length) {
       kutu.hidden = false;
       kutu.innerHTML =
-        `<p class="note" style="margin:10px 0 6px">Anahtar girilmedi —
-          <b>kayıtlı senaryo</b> modundasınız. Aşağıdakiler API anahtarı
-          olmadan uçtan uca çalışır; birine tıklayın:</p>` +
+        `<p class="note" style="margin:10px 0 6px">No key entered — you are in
+          <b>recorded scenario</b> mode. The tasks below run end to end without an
+          API key; click one. They are in Turkish because the cassettes are keyed
+          to the exact recorded request:</p>` +
         h.kayitli_senaryolar.map(s =>
           `<button type="button" class="ghost senaryo" style="margin:3px 4px 3px 0"
              data-gorev="${esc(s)}">${esc(s)}</button>`).join("");
@@ -276,8 +277,8 @@ function saglikYenile({ roller = true } = {}) {
     }
 
     $("keyNote").textContent =
-      `${h.kaset_sayisi} kayıtlı senaryo${h.kayit_modu ? " · KAYIT MODU açık" : ""}. ` +
-      `Anahtar yalnızca bellekte tutulur, diske yazılmaz ve konteyner durunca kaybolur.`;
+      `${h.kaset_sayisi} recorded scenarios${h.kayit_modu ? " · RECORD MODE on" : ""}. ` +
+      `Keys are held in memory only: never written to disk, lost when the container stops.`;
   });
 }
 
@@ -304,8 +305,8 @@ function rolleriCiz(roller, anahtarlar) {
       <select class="prov">${SAGLAYICILAR.map(s =>
         `<option value="${s}"${s === r.saglayici ? " selected" : ""}>${s}</option>`).join("")}</select>
       <select class="model"><option value="${esc(r.model)}">${esc(r.model)}</option></select>
-      <button type="button" class="save">kaydet</button>
-      <button type="button" class="ghost reset" ${secili ? "" : "disabled"}>sıfırla</button>
+      <button type="button" class="save">save</button>
+      <button type="button" class="ghost reset" ${secili ? "" : "disabled"}>reset</button>
       <span class="src ${uyari ? "yedek" : ""}">${esc(r.saglayici_kaynagi)}/${esc(r.model_kaynagi)}${maske ? " · " + maske : ""}</span>
     </div>`;
   }).join("");
@@ -324,7 +325,7 @@ function rolleriCiz(roller, anahtarlar) {
       await fetch(`/api/modeller/secim?rol=${encodeURIComponent(satir.dataset.rol)}`,
                   { method: "DELETE" });
       $("rolesNote").textContent =
-        `${satir.dataset.rol} seçimi kaldırıldı; anahtara göre otomatik belirlenecek.`;
+        `${satir.dataset.rol} selection cleared; it will be chosen automatically from the key.`;
       saglikYenile();
     });
 
@@ -346,8 +347,8 @@ function rolleriCiz(roller, anahtarlar) {
     }).catch(() => {}));
 
   $("rolesNote").textContent =
-    "Seçim diske yazılır ve hem görevler hem yeniden başlatma boyunca kalır; " +
-    "anahtarlar aksine yalnızca bellekte durur.";
+    "Selections are written to disk and persist across tasks and restarts; " +
+    "keys, by contrast, stay in memory only.";
 }
 
 async function modelleriDoldur(satir, secili) {
@@ -359,12 +360,12 @@ async function modelleriDoldur(satir, secili) {
     model.innerHTML = `<option value="${esc(secili || model.value)}">${esc(secili || model.value)}</option>`;
     return;
   }
-  if (!katalogOnbellek[saglayici]) model.innerHTML = `<option>yükleniyor…</option>`;
+  if (!katalogOnbellek[saglayici]) model.innerHTML = `<option>loading…</option>`;
   try {
     const modeller = await katalogAl(saglayici);
     model.innerHTML = modeller.map(m =>
       `<option value="${esc(m.id)}"${m.id === secili ? " selected" : ""}>${esc(m.etiket)}</option>`
-    ).join("") || `<option value="">(model bulunamadı)</option>`;
+    ).join("") || `<option value="">(no models found)</option>`;
   } catch (err) {
     model.innerHTML = `<option value="">${esc(err.message)}</option>`;
   }
@@ -388,19 +389,19 @@ $("rolesSaveAll").addEventListener("click", async () => {
   const satirlar = [...$("roles").querySelectorAll(".rolerow")];
   try {
     for (const satir of satirlar) await satiriKaydet(satir);
-    $("rolesNote").textContent = `${satirlar.length} rolün seçimi kaydedildi.`;
+    $("rolesNote").textContent = `Saved the selection for ${satirlar.length} roles.`;
     saglikYenile();
   } catch (hata) {
-    $("rolesNote").textContent = "Kaydedilemedi: " + hata;
+    $("rolesNote").textContent = "Could not save: " + hata;
   }
 });
 
 // ---------------------------------------------------------------- kütüphane
 const DURUM_ETIKET = {
-  KABUL_EDILDI: ["ok", "kabul edildi"],
-  KAPSAM_DISI:  ["warn", "kapsam dışı"],
-  LIMIT_ASILDI: ["warn", "limit aşıldı"],
-  HATA:         ["warn", "hata"],
+  KABUL_EDILDI: ["ok", "accepted"],
+  KAPSAM_DISI:  ["warn", "out of scope"],
+  LIMIT_ASILDI: ["warn", "limit exceeded"],
+  HATA:         ["warn", "error"],
 };
 
 let aktifOyunYolu = "";
@@ -434,7 +435,7 @@ $("playerTab").addEventListener("click", () => {
 function kutuphaneYenile() {
   return fetch("/api/oyunlar").then(r => r.json()).then(d => {
     if (!d.toplam) {
-      $("library").innerHTML = `<p class="note">Henüz oyun üretilmedi.</p>`;
+      $("library").innerHTML = `<p class="note">No games generated yet.</p>`;
       return;
     }
     $("library").innerHTML = d.oyunlar.map(o => {
@@ -442,10 +443,10 @@ function kutuphaneYenile() {
       return `<div class="game">
         <span class="name">${esc(o.oyun)}</span>
         <span class="badge ${sinif}">${etiket}</span>
-        <span class="meta">${o.tur} tur · $${esc(o.maliyet_usd)}</span>
-        <button class="tx" data-tx="${esc(o.gorev_id)}">transkript</button>
+        <span class="meta">${o.tur} turns · $${esc(o.maliyet_usd)}</span>
+        <button class="tx" data-tx="${esc(o.gorev_id)}">transcript</button>
         <button ${o.oynanabilir ? "" : "disabled"}
-                data-id="${esc(o.gorev_id)}" data-ad="${esc(o.oyun)}">oynat</button>
+                data-id="${esc(o.gorev_id)}" data-ad="${esc(o.oyun)}">play</button>
       </div>
       <div class="hist" id="hist-${esc(o.gorev_id)}" hidden></div>`;
     }).join("");
@@ -462,29 +463,29 @@ async function transkriptGoster(id) {
   const kutu = $(`hist-${id}`);
   if (!kutu.hidden) { kutu.hidden = true; return; }
   kutu.hidden = false;
-  kutu.innerHTML = `<p class="note">yükleniyor…</p>`;
+  kutu.innerHTML = `<p class="note">loading…</p>`;
   try {
     const t = await (await fetch(`/oyun/${encodeURIComponent(id)}/transkript.json`)).json();
     const top = t.toplamlar || {};
     kutu.innerHTML =
-      `<div class="row"><span class="dot"></span><span class="k">görev</span>
+      `<div class="row"><span class="dot"></span><span class="k">task</span>
          <span class="v">${esc(t.gorev_metni)}</span></div>
-       <div class="row"><span class="dot"></span><span class="k">başlangıç</span>
+       <div class="row"><span class="dot"></span><span class="k">started</span>
          <span class="v">${esc(t.baslangic)}</span></div>
-       <div class="row"><span class="dot"></span><span class="k">son durum</span>
-         <span class="v">${esc(t.son_durum)} · kural ${esc((t.rapor||{}).uygulanan_kural)}</span></div>
-       <div class="row"><span class="dot"></span><span class="k">toplam</span>
-         <span class="v">${top.tur} tur · ${top.token_girdi}→${top.token_cikti} tok · $${esc(top.maliyet_usd)}</span></div>
-       <div class="row"><span class="dot"></span><span class="k">prompt sürümleri</span>
+       <div class="row"><span class="dot"></span><span class="k">final state</span>
+         <span class="v">${esc(t.son_durum)} · rule ${esc((t.rapor||{}).uygulanan_kural)}</span></div>
+       <div class="row"><span class="dot"></span><span class="k">total</span>
+         <span class="v">${top.tur} turns · ${top.token_girdi}→${top.token_cikti} tok · $${esc(top.maliyet_usd)}</span></div>
+       <div class="row"><span class="dot"></span><span class="k">prompt versions</span>
          <span class="v">${Object.entries(t.prompt_hashleri || {})
            .map(([k, v]) => `${esc(k)}@${esc(v)}`).join(" · ") || "—"}</span></div>
        <div style="margin-top:12px">${(t.mesajlar || []).map(mesajHTML).join("")}</div>
        <p class="note"><a href="/oyun/${encodeURIComponent(id)}/transkript.md"
           target="_blank" rel="noopener">Markdown</a> ·
           <a href="/oyun/${encodeURIComponent(id)}/transkript.json"
-          target="_blank" rel="noopener">JSON</a> olarak indir</p>`;
+          target="_blank" rel="noopener">JSON</a></p>`;
   } catch (err) {
-    kutu.innerHTML = `<p class="note">Transkript okunamadı: ${esc(err)}</p>`;
+    kutu.innerHTML = `<p class="note">Could not read transcript: ${esc(err)}</p>`;
   }
 }
 
@@ -496,22 +497,22 @@ function mesajHTML(m) {
   if (m.rol === "planlayici") {
     const u = i.uygulanabilirlik || {};
     if (u.karar === "UYGUN_DEGIL") {
-      body = `<b>${esc(i.oyun)}</b> — <span class="verdict RED">KAPSAM DIŞI</span>
+      body = `<b>${esc(i.oyun)}</b> — <span class="verdict RED">OUT OF SCOPE</span>
               <div>${esc(u.gerekce)}</div>
-              <div class="msg-meta">${u.ozel_durum_sayisi} özel durum</div>`;
+              <div class="msg-meta">${u.ozel_durum_sayisi} special cases</div>`;
     } else {
-      body = `<b>${esc(i.oyun)}</b> · ${u.ozel_durum_sayisi} özel durum
+      body = `<b>${esc(i.oyun)}</b> · ${u.ozel_durum_sayisi} special cases
               <ul>${(i.kabul_kriterleri || []).map(k => `<li>${esc(k)}</li>`).join("")}</ul>`;
     }
   } else if (m.rol === "uygulayici") {
     body = `<ul>${(i.yazilan_dosyalar || []).map(d =>
-      `<li>${esc(d.yol)} · ${d.bayt} bayt</li>`).join("")}</ul>
-      <div class="msg-meta">${(i.arac_cagrilari || []).length} MCP çağrısı</div>
+      `<li>${esc(d.yol)} · ${d.bayt} bytes</li>`).join("")}</ul>
+      <div class="msg-meta">${(i.arac_cagrilari || []).length} MCP calls</div>
       ${i.not ? `<div>${esc(i.not)}</div>` : ""}`;
   } else if (m.rol === "denetleyici") {
     const t = i.test_sonucu || {};
     body = `<span class="verdict ${esc(i.karar)}">${esc(i.karar)}</span>
-            <span class="msg-meta">geçen ${t.gecen} · kalan ${t.kalan}</span>
+            <span class="msg-meta">passed ${t.gecen} · failed ${t.kalan}</span>
             <div>${esc(i.gerekce)}</div>
             ${(i.bulgular || []).length ? `<ul>${i.bulgular.map(b =>
               `<li>[${esc(b.onem)}] ${esc(b.dosya)}: ${esc(b.sorun)}</li>`).join("")}</ul>` : ""}`;
@@ -525,7 +526,7 @@ function mesajHTML(m) {
 
   return `<div class="msg ${esc(m.rol)}">
     <div class="msg-head"><span class="msg-rol">${esc(m.rol)}</span>
-      <span class="msg-meta">tur ${m.tur}</span>
+      <span class="msg-meta">turn ${m.tur}</span>
       <span class="msg-meta">${meta}</span></div>
     <div class="msg-body">${body}</div>
   </div>`;
@@ -538,14 +539,14 @@ function mesajHTML(m) {
 // adım çıkarılabilir: planlayıcı bitti → uygulayıcı yazıyor, test koştu →
 // denetleyici inceliyor. Kullanıcıya gösterilen budur.
 const AGENTLAR = [
-  { id: "planlayici", ad: "Planlayıcı", is: "görevi değerlendiriyor, kriterleri yazıyor" },
-  { id: "uygulayici", ad: "Uygulayıcı", is: "dosyaları yazıyor" },
-  { id: "denetleyici", ad: "Denetleyici", is: "testleri ve kriterleri inceliyor" },
+  { id: "planlayici", ad: "Planner", is: "assessing the task, writing criteria" },
+  { id: "uygulayici", ad: "Implementer", is: "writing the files" },
+  { id: "denetleyici", ad: "Reviewer", is: "reviewing tests and criteria" },
 ];
 
 const DURUM_METNI = {
-  bekliyor: "bekliyor", bitti: "tamamlandı", red: "revizyon istedi",
-  kapsam: "gerekçeli ret", atlandi: "çalıştırılmadı",
+  bekliyor: "waiting", bitti: "done", red: "requested revision",
+  kapsam: "refused with reasons", atlandi: "not run",
 };
 
 let hatDurumu = {};
@@ -560,7 +561,7 @@ function hatSifirla() {
        <div class="baslik"><span class="isik"></span>${a.ad}
          <span class="tur-rozet" id="tur-${a.id}" hidden></span>
          <span class="sure" id="sure-${a.id}"></span></div>
-       <div class="durum" id="durum-${a.id}">bekliyor</div>
+       <div class="durum" id="durum-${a.id}">waiting</div>
        <div class="ozet" id="ozet-${a.id}"></div>
      </div>`).join("");
 }
@@ -572,7 +573,7 @@ function hatCiz() {
     kutu.className = "agent " + s.durum;
     const gecen = s.durum === "calisiyor" && s.basladi
       ? (Date.now() - s.basladi) / 1000 : s.sure;
-    $(`sure-${a.id}`).textContent = gecen ? `${gecen.toFixed(0)} sn` : "";
+    $(`sure-${a.id}`).textContent = gecen ? `${gecen.toFixed(0)} s` : "";
     $(`durum-${a.id}`).textContent = DURUM_METNI[s.durum] || a.is;
     $(`ozet-${a.id}`).innerHTML = s.ozet;
   });
@@ -603,7 +604,7 @@ function gorevBaslat(gorev) {
   $("taskGo").disabled = true;
   hatSifirla();
   agentDurum("planlayici", "calisiyor");
-  simdiYaz("Planlayıcı görevi değerlendiriyor…");
+  simdiYaz("Planner is assessing the task…");
   clearInterval(hatSayac);
   hatSayac = setInterval(hatCiz, 500);   // çalışan agent'ın süresi aksın
 
@@ -620,39 +621,39 @@ function gorevBaslat(gorev) {
       const u = i.uygulanabilirlik || {};
       if (u.karar === "UYGUN_DEGIL") {
         agentDurum("planlayici", "kapsam",
-          `<b>${esc(i.oyun)}</b> · ${u.ozel_durum_sayisi} özel durum`);
+          `<b>${esc(i.oyun)}</b> · ${u.ozel_durum_sayisi} special cases`);
         agentDurum("uygulayici", "atlandi");
         agentDurum("denetleyici", "atlandi");
-        simdiYaz("Uygulanabilirlik ölçütü geçilemedi — gerekçeli ret", false);
+        simdiYaz("Feasibility criteria not met — refused with reasons", false);
       } else {
         agentDurum("planlayici", "bitti",
-          `<b>${esc(i.oyun)}</b> · ${(i.kabul_kriterleri || []).length} kabul kriteri`);
+          `<b>${esc(i.oyun)}</b> · ${(i.kabul_kriterleri || []).length} acceptance criteria`);
         agentDurum("uygulayici", "calisiyor");
-        simdiYaz("Uygulayıcı üç dosyayı yazıyor…");
+        simdiYaz("Implementer is writing the three files…");
       }
     } else if (m.rol === "uygulayici") {
       agentDurum("uygulayici", "bitti",
-        `${(i.yazilan_dosyalar || []).length} dosya · ${(i.arac_cagrilari || []).length} MCP çağrısı`);
-      simdiYaz("Statik denetim, ardından sandbox'ta testler…");
+        `${(i.yazilan_dosyalar || []).length} files · ${(i.arac_cagrilari || []).length} MCP calls`);
+      simdiYaz("Static check, then tests in the sandbox…");
     } else if (m.rol === "denetleyici") {
       const t = i.test_sonucu || {};
       const kabul = i.karar === "KABUL" && t.kalan === 0;
       agentDurum("denetleyici", kabul ? "bitti" : "red",
         `<span class="verdict ${esc(i.karar)}">${esc(i.karar)}</span>
-         geçen ${t.gecen} · kalan ${t.kalan}`);
-      if (kabul) { simdiYaz("Kabul edildi", false); }
+         passed ${t.gecen} · failed ${t.kalan}`);
+      if (kabul) { simdiYaz("Accepted", false); }
       else {
         tur += 1;
         AGENTLAR.slice(1).forEach(a => {
-          const r = $(`tur-${a.id}`); r.hidden = false; r.textContent = `tur ${tur}`;
+          const r = $(`tur-${a.id}`); r.hidden = false; r.textContent = `turn ${tur}`;
         });
         agentDurum("uygulayici", "calisiyor", "");
         agentDurum("denetleyici", "bekliyor", "");
-        simdiYaz(`Denetleyici reddetti — uygulayıcı ${tur}. turda düzeltiyor…`);
+        simdiYaz(`Reviewer rejected — implementer is fixing it on turn ${tur}…`);
       }
     } else if (m.rol === "sistem" && i.olay === "test_kosuldu") {
       agentDurum("denetleyici", "calisiyor");
-      simdiYaz("Denetleyici testleri ve kabul kriterlerini inceliyor…");
+      simdiYaz("Reviewer is examining the tests and acceptance criteria…");
     }
 
     $("runSummary").textContent = `$${toplam.toFixed(4)}`;
@@ -667,9 +668,9 @@ function gorevBaslat(gorev) {
     });
     $("taskGo").disabled = false;
     const rapor = d.rapor || {};
-    simdiYaz(d.hata ? `Hata: ${d.hata}`
-                    : `${d.son_durum} · kural ${rapor.uygulanan_kural}`, false);
-    $("runSummary").textContent = `${rapor.tur || 1} tur · $${toplam.toFixed(4)}`;
+    simdiYaz(d.hata ? `Error: ${d.hata}`
+                    : `${d.son_durum} · rule ${rapor.uygulanan_kural}`, false);
+    $("runSummary").textContent = `${rapor.tur || 1} turns · $${toplam.toFixed(4)}`;
     kutuphaneYenile().then(() => {
       if (d.son_durum === "KABUL_EDILDI" && d.gorev_id) oyunOynat(d.gorev_id, gorev);
     });
@@ -679,7 +680,7 @@ function gorevBaslat(gorev) {
 
   kaynak.onerror = () => {
     kaynak.close(); clearInterval(hatSayac); $("taskGo").disabled = false;
-    simdiYaz("Bağlantı kesildi", false);
+    simdiYaz("Connection lost", false);
   };
 }
 
@@ -692,9 +693,9 @@ $("taskForm").addEventListener("submit", async e => {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ gorev }),
     });
-    if (!r.ok) { $("taskNote").textContent = "Reddedildi: " + ((await r.json()).detail || r.status); return; }
+    if (!r.ok) { $("taskNote").textContent = "Rejected: " + ((await r.json()).detail || r.status); return; }
     gorevBaslat(gorev);
-  } catch (err) { $("taskNote").textContent = "Gönderilemedi: " + err; }
+  } catch (err) { $("taskNote").textContent = "Could not submit: " + err; }
 });
 
 // ---------------------------------------------------------------- anahtarlar
@@ -716,13 +717,13 @@ $("keyForm").addEventListener("submit", async e => {
         }),
       });
       if (!r.ok) {
-        $("keyNote").textContent = "Reddedildi: " + ((await r.json()).detail || r.status);
+        $("keyNote").textContent = "Rejected: " + ((await r.json()).detail || r.status);
         return;
       }
     }
     alan.value = "";                     // anahtar DOM'da bırakılmaz
     await saglikYenile();
-  } catch (err) { $("keyNote").textContent = "Gönderilemedi: " + err; }
+  } catch (err) { $("keyNote").textContent = "Could not submit: " + err; }
 });
 
 $("keyClear").addEventListener("click", async () => {

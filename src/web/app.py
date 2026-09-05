@@ -38,7 +38,7 @@ from src.transcript.models import Role
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 
-app = FastAPI(title="Agent Oyun Atölyesi", version="0.1.0")
+app = FastAPI(title="Agent Workshop", version="0.1.0")
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 library = GameLibrary(WORKSPACES_ROOT)
@@ -264,7 +264,7 @@ def list_models(saglayici: str, yenile: bool = False) -> dict[str, object]:
     if not key:
         raise HTTPException(
             status_code=400,
-            detail=f"{saglayici} kataloğu için önce bir API anahtarı girin",
+            detail=f"enter an API key before loading the {saglayici} catalogue",
         )
     try:
         models = catalog.fetch(saglayici, key, force=yenile)
@@ -321,14 +321,14 @@ def list_games() -> dict[str, object]:
 def get_game(gorev_id: str) -> dict[str, object]:
     entry = library.get(gorev_id)
     if entry is None:
-        raise HTTPException(status_code=404, detail="görev bulunamadı")
+        raise HTTPException(status_code=404, detail="task not found")
     return entry.as_dict()
 
 
 @app.delete("/api/oyunlar/{gorev_id}")
 def delete_game(gorev_id: str) -> dict[str, object]:
     if not library.delete(gorev_id):
-        raise HTTPException(status_code=404, detail="görev bulunamadı")
+        raise HTTPException(status_code=404, detail="task not found")
     return {"silindi": gorev_id}
 
 
@@ -342,7 +342,7 @@ def serve_game_file(gorev_id: str, dosya: str) -> FileResponse:
     """
     path = library.file_path(gorev_id, dosya)
     if path is None:
-        raise HTTPException(status_code=404, detail="dosya bulunamadı")
+        raise HTTPException(status_code=404, detail="file not found")
     return FileResponse(
         path,
         headers={
@@ -368,11 +368,11 @@ def _config_warning(roller: list) -> str:
 
     if replay and canli:
         return (
-            f"Karışık kurulum: {', '.join(canli)} gerçek sağlayıcıda, "
-            f"{', '.join(replay)} kayıtlı senaryo modunda. Bu kurulumda koşu "
-            f"büyük olasılıkla {replay[0]} adımında duracak — canlı bir agent'ın "
-            f"ürettiği özgün çıktı için kaset bulunmaz. Eksik rollere de anahtar "
-            f"girin veya anahtarları tamamen temizleyip kayıtlı senaryoları kullanın."
+            f"Mixed setup: {', '.join(canli)} on a live provider, "
+            f"{', '.join(replay)} in recorded-scenario mode. This run will most "
+            f"likely stop at the {replay[0]} step — no cassette exists for the "
+            f"novel output a live agent produces. Enter keys for the remaining "
+            f"roles, or clear all keys and use the recorded scenarios."
         )
 
     # Saf replay: kasetler modele bağlıdır. Farklı bir model seçilmişse
@@ -384,10 +384,10 @@ def _config_warning(roller: list) -> str:
             if uyumsuz:
                 adlar = ", ".join(f"{r.rol.value}={r.model}" for r in uyumsuz)
                 return (
-                    f"Kayıtlı senaryo modundasınız ama seçili modeller kasetlerle "
-                    f"uyuşmuyor ({adlar}). Kasetler şu modellerle kaydedildi: "
-                    f"{', '.join(sorted(kayitli))}. Koşu bu rolde duracaktır — "
-                    f"model seçimini sıfırlayın veya anahtar girin."
+                    f"You are in recorded-scenario mode but the selected models "
+                    f"do not match the cassettes ({adlar}). The cassettes were "
+                    f"recorded with: {', '.join(sorted(kayitli))}. The run will "
+                    f"stop at this role — reset the model selection or enter a key."
                 )
     return ""
 

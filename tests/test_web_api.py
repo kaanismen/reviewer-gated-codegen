@@ -232,14 +232,14 @@ def test_replayde_kasetsiz_model_secimi_uyarir(client):
         json={"rol": "denetleyici", "saglayici": "anthropic", "model": "yok-boyle-model"},
     )
     uyari = client.get("/api/health").json()["yapilandirma_uyarisi"]
-    assert "kasetlerle" in uyari
+    assert "cassettes" in uyari
     assert "yok-boyle-model" in uyari
 
 
 def test_katalog_anahtarsiz_reddedilir(client):
     r = client.get("/api/modeller?saglayici=anthropic")
     assert r.status_code == 400
-    assert "anahtar" in r.json()["detail"]
+    assert "API key" in r.json()["detail"]
 
 
 def test_anahtarlar_temizlenebilir(client):
@@ -277,4 +277,4 @@ def test_izin_listesi_disindaki_dosya_sunulmaz(client):
 def test_ana_sayfa_acilir(client):
     response = client.get("/")
     assert response.status_code == 200
-    assert "Agent Oyun Atölyesi" in response.text
+    assert "Agent Workshop" in response.text
