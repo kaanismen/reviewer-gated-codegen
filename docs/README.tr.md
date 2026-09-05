@@ -8,7 +8,7 @@ Sistemin ayırt edici özelliği agent'ların konuşması değil, **birbirini
 reddedebilmesidir.** Denetleyici testleri gerçekten çalıştırır, uygulayıcının
 çıktısını gerekçeli olarak geri çevirir ve revizyon ister.
 
-> GTech Yaz Akademisi bitirme projesi — Proje 1: Agent-to-Agent Geliştirme.
+> Bu, [README.md](../README.md) dosyasının Türkçe sürümüdür.
 
 ```
 görev metni
@@ -24,7 +24,7 @@ DENETLEYİCİ ─► yapısal JSON ile KABUL / RED
    └── RED ──► revizyon turu ──► UYGULAYICI
 ```
 
-![Agent hattı — hangi agent ne yapıyor, canlı](docs/gorseller/agent-hatti.png)
+![Agent hattı — hangi agent ne yapıyor, canlı](gorseller/agent-hatti.png)
 
 ---
 
@@ -70,7 +70,7 @@ docker compose up --build
 docker compose run --rm test
 ```
 
-**390 test, ~19 saniye.** Testler de konteynerde koşar; host'a pytest kurulmaz.
+**411 test, ~17 saniye.** Testler de konteynerde koşar; host'a pytest kurulmaz.
 Hiçbir otomatik test gerçek API çağrısı yapmaz.
 
 ---
@@ -92,15 +92,15 @@ Snake koşusunda denetleyici 1. turda **RED** verdi ve gerekçesini dosya-satır
 
 Uygulayıcı **yalnızca bu bulguyu** hedefleyerek düzeltti; 2. turda testler 7/7 geçti ve karar KABUL oldu. Bu, sistemin "üç agent sırayla konuştu"dan farkının çalışan kanıtıdır.
 
-![RED turu ve revizyon — transkript ayrıntısı](docs/gorseller/red-revizyon.png)
+![RED turu ve revizyon — transkript ayrıntısı](gorseller/red-revizyon.png)
 
 Üretilen oyun aynı sayfada oynanır:
 
-![Üretilen snake oyunu](docs/gorseller/oyun.png)
+![Üretilen snake oyunu](gorseller/oyun.png)
 
 Ölçütü geçemeyen istek ise çökmeyle değil **gerekçeli retle** sonuçlanır:
 
-![Satranç — KAPSAM_DISI ve gerekçesi](docs/gorseller/kapsam-disi.png)
+![Satranç — KAPSAM_DISI ve gerekçesi](gorseller/kapsam-disi.png)
 
 Model seçimi doğrudan bir maliyet kaldıracıdır: varsayılan kurulum $0,22,
 dengeli kurulum (uygulayıcı Haiku, denetleyici Sonnet) ≈$0,12.
@@ -115,12 +115,12 @@ olanlar gerekçeyle reddedilir.
 
 | Dosya | İçerik |
 |---|---|
-| [docs/kilavuz.md](docs/kilavuz.md) | **Buradan başlayın** — kurulum, kullanım, durum açıklamaları, sorun giderme |
-| [docs/analiz.md](docs/analiz.md) | Analiz dokümanı — 15 user story, 29 kabul kriteri, izlenebilirlik matrisi |
-| [docs/teknik.md](docs/teknik.md) | Teknik doküman — mimari, veri modeli, API sözleşmesi, ölçümler, bilinen sınırlar |
-| [docs/ai-gunlugu.md](docs/ai-gunlugu.md) | AI çalışma günlüğü — 23 kayıt, 32 kararlık kütük, 18 maddelik denetim özeti |
-| [PROJECT.md](PROJECT.md) | Context paketi — geliştiricinin (ve AI aracının) çalıştığı bağlayıcı referans |
-| [docs/faz-plani.md](docs/faz-plani.md) | Bağımlılık analizi ve inşa sırası |
+| [docs/kilavuz.md](kilavuz.md) | **Buradan başlayın** — kurulum, kullanım, durum açıklamaları, sorun giderme |
+| [docs/analiz.md](analiz.md) | Analiz dokümanı — 15 user story, 29 kabul kriteri, izlenebilirlik matrisi |
+| [docs/teknik.md](teknik.md) | Teknik doküman — mimari, veri modeli, API sözleşmesi, ölçümler, bilinen sınırlar |
+| [docs/ai-gunlugu.md](ai-gunlugu.md) | AI çalışma günlüğü — 28 kayıt, 36 kararlık kütük, 24 maddelik denetim özeti |
+| [PROJECT.md](../PROJECT.md) | Context paketi — geliştiricinin (ve AI aracının) çalıştığı bağlayıcı referans |
+| [docs/faz-plani.md](faz-plani.md) | Bağımlılık analizi ve inşa sırası |
 
 ---
 
@@ -138,7 +138,7 @@ tarayıcı tarafında ağ çıkışını kapatan CSP.
 
 ### Bilinen sınırlar dürüstçe yazılıdır
 
-Altı kapatılmamış sınır [`docs/teknik.md`](docs/teknik.md) §8'de sonuçlarıyla
+Altı kapatılmamış sınır [`docs/teknik.md`](teknik.md) §8'de sonuçlarıyla
 listelenmiştir. En önemlisi:
 
 > **`game.html` hiçbir katman tarafından doğrulanmaz.** Sistem `logic.js`'i
