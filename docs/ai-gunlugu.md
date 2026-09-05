@@ -38,11 +38,7 @@ Bu dosya proje boyunca büyütülmüştür. İlk kayıtlar henüz tek satır kod
 
 AI, `.pptx` dosyasını açıp (OOXML arşivi olarak çözüp slayt XML'lerinden metni çıkararak) sunumun tamamını okudu ve şu bulguları raporladı:
 
-1. **Puanlama dağılımının asıl mesajı**: değerlendirme ağırlıkları programın kendi materyalinde tanımlı. AI bunun altını çizdi: *"puanın dörtte üçü üründe değil"* — dolayısıyla iddialı bir ürün seçip dokümana zaman bırakmamak bu rubrikte en pahalı hata.
-2. **Zorunlu teslimler** listelendi ve eksik teslimin projeyi değerlendirme dışı bıraktığı vurgulandı.
-3. **Proje seçenekleri** kriterlere uyum açısından karşılaştırıldı; her biri için güçlü ve riskli taraf tablolandı.
-4. **Bir çıkarım**: sunumdaki test senaryosu örnekleri doğrudan e-ticaret/ödeme akışı kenar durumları. AI bundan, rubriğin bu senaryolar düşünülerek yazılmış olabileceği sonucunu çıkardı ve Proje 3/5'i "rubriğe en hazır eşleşen" seçenekler olarak işaretledi.
-5. **Sunumda cevabı olmayan noktalar** listelendi: süre, teknoloji serbestliği, bireysel/ekip, teslim formatı, demo formatı.
+Kapsam, teslim kriterleri, değerlendirme ağırlıkları ve proje seçenekleri programın kendisi tarafından belirlenmişti; AI bunları sunumdan çıkardı, ağırlıkların nereye yığıldığını yorumladı, seçenekleri kriterlere uyum açısından karşılaştırdı ve iki seçeneği "en hazır eşleşen" olarak işaretledi. Ayrıntılar programın kendi materyaline ait olduğu için burada tekrarlanmıyor. AI ayrıca **sunumda cevabı olmayan noktaları** listeledi: süre, teknoloji serbestliği, bireysel/ekip, teslim formatı, demo formatı.
 
 **Karar sahibi:** AI (analiz), insan (yönlendirme).
 
@@ -152,7 +148,7 @@ Bu tablo, projenin tüm bağlayıcı kararlarını ve sahiplerini özetler.
 | 8 | Hedef dil: HTML+JS (Python'dan revize) | AI düzeltmesi → insan onayı | iframe demosu ve sıfır kurulum gerekçesiyle |
 | 9 | Satranç kapsam dışı | AI önerisi → insan onayı | Gerekçeli kısıt olarak belgelenecek |
 | 10 | Üç sağlayıcı (Claude / OpenAI / Ollama) | **İnsan** | AI bunu rubrik avantajına çevirdi |
-| 11 | Record/replay sahte LLM sağlayıcısı | AI önerisi → insan onayı | test kaleminin anahtarı |
+| 11 | Record/replay sahte LLM sağlayıcısı | AI önerisi → insan onayı | Test kaleminin anahtarı |
 | 12 | MCP rolü: workspace dosya işlemleri | AI önerisi → insan onayı | İnsanın açık sorusuna cevaben |
 | 13 | 3 günlük süre kısıtı | **İnsan** (dış kısıt) | Tüm kapsamı belirleyen değişken |
 
@@ -166,8 +162,8 @@ Rubrikteki "denetim raporu" gereksinimi için, bu aşamada AI çıktısının g�
 
 | Konu | Durum | Nasıl doğrulandı / doğrulanacak |
 |---|---|---|
-| Sunum içeriğinin çıkarımı | Güvenilir | Metin doğrudan `.pptx` XML'inden çıkarıldı, özetlenmedi; slaytların tamamı okundu |
-| Puanlama yüzdeleri | Doğrulandı | Ağırlıkların toplamı %100 olarak kontrol edildi |
+| Sunum içeriğinin çıkarımı | Güvenilir | Metin doğrudan sunum dosyasının XML'inden çıkarıldı, özetlenmedi; slaytların tamamı okundu |
+| Puanlama ağırlıkları | Doğrulandı | Ağırlıkların toplamı %100 olarak kontrol edildi |
 | "Rubrik e-ticaret düşünülerek yazılmış" çıkarımı | **Yorum, kanıt değil** | Sunumdaki test senaryosu örneklerine dayanan bir çıkarım; eğitim koordinasyonuna doğrulatılmadı. Karar üzerinde etkisi olmadı (öneri zaten reddedildi) |
 | LLM fiyatlandırması | Güvenilir | Hafızadan değil, güncel fiyat referansından alındı |
 | Token tahminleri (30k girdi / 12k çıktı) | ✅ **Ölçüldü — tahmin 4 kat yüksekti** | Gerçek: tic-tac-toe **7.377 girdi / 6.304 çıktı**, connect-4 benzer. Tahmin muhafazakârdı; prompt önbelleği de payı düşürdü (planlayıcının ücretli girdisi 74 token'a indi) |
