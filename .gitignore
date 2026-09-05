@@ -18,5 +18,5 @@ venv/
 # Office geçici dosyaları
 ~$*
 
-# Egitmenlerin kendi sunum dosyasi - depoya ve teslime girmez
+# Presentation files are not part of the repository
 *.pptx
