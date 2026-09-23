@@ -2,7 +2,7 @@
 
 Saf: LLM çağrısı, disk erişimi, saat okuması yoktur. Tek işi bir olayı alıp
 koruma koşullarını değerlendirmek ve hedef durumu döndürmektir. Yan etkiler
-(dosya yazma, ağ) çağıran katmana aittir; böylece 13 geçişin tamamı
+(dosya yazma, ağ) çağıran katmana aittir; böylece 19 geçişin tamamı
 saniyeler içinde ve deterministik olarak sınanabilir.
 """
 
