@@ -241,8 +241,8 @@ natively on Windows; a direct `pytest` run there leaves roughly 30 sandbox and
 security tests failing on `os.getuid` and symlink privileges.
 
 ```bash
-git clone https://github.com/kaanismen/AgenticGameWorkshop.git
-cd AgenticGameWorkshop
+git clone https://github.com/kaanismen/reviewer-gated-codegen
+cd reviewer-gated-codegen
 docker compose up               # then open http://localhost:8000
 docker compose run --rm test    # 411 tests, no key required
 ```
